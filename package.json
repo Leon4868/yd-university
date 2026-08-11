@@ -1,0 +1,22 @@
+{
+  "name": "yd-university",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A hybrid Web3 education platform with on-chain payments and certificates",
+  "workspaces": [
+    "apps/*",
+    "contracts"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:api": "npm run dev -w @yd/api",
+    "dev:web": "npm run dev -w @yd/web",
+    "contracts:test": "npm run test -w @yd/contracts"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
