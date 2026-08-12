@@ -44,11 +44,11 @@ Authorization: Bearer <token>
 | --- | --- |
 | `AuthVerifier` | 只做「token → subject」，不碰数据库、不碰角色 |
 | `DemoAuthVerifier`（`AUTH_MODE=demo`，默认） | token 形如 `demo:<privy_user_id>`，取出 subject，不校验签名，仅限本地 |
-| `PrivyAuthVerifier`（`AUTH_MODE=privy`） | 构造时强制 `PRIVY_APP_ID` / `PRIVY_APP_SECRET`；令牌校验尚未接线，`verify()` 抛 `NOT_IMPLEMENTED` |
+| `PrivyAuthVerifier`（`AUTH_MODE=privy`） | 用 `PRIVY_APP_ID` 对 access token 做 ES256 校验；若请求携带 `privy-id-token`，再校验 identity token 并读取已绑定钱包 |
 | `createAuthVerifier(env)` | 按 `AUTH_MODE` 选实现，凭证缺失时启动即失败，不静默降级成 demo |
-| `createAuthGuards(verifier, users)` | 产出 `requireUser`（401 `UNAUTHENTICATED`）与 `requireRole(...roles)`（403 `FORBIDDEN`） |
+| `createAuthGuards(verifier, users)` | 产出 `requireUser`（401 `UNAUTHENTICATED`）与 `requireRole(...roles)`（403 `FORBIDDEN`）；仅允许后端验证过的管理员钱包触发管理员引导 |
 
-关键边界：**角色只从数据库 `users.role` 读**。verifier 交出的只有 subject，请求头与请求体里的任何角色字段都不参与判权；
+关键边界：**角色只从数据库 `users.role` 读**。verifier 交出经过签名校验的 subject，以及可选的 Privy identity token 钱包地址；请求头与请求体里的任何角色字段都不参与判权；
 `creators` 里的 `role` 只表示「申请成为哪种创作者」，必须管理员通过后才在同一事务里传导到 `users.role`。
 换 verifier 不影响这条链路——`AUTH_MODE=privy` 接线时只替换第一步。
 

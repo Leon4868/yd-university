@@ -31,8 +31,10 @@ Authorization: Bearer <token>
 避免任意字符串开号。**自动建号永远只给学生角色，不存在通过登录直接拿到高权限的路径。**
 
 **管理员引导**：`BOOTSTRAP_ADMIN_SUBJECTS` 是逗号分隔的 `privy_user_id` 白名单，命中的账号在登录时把
-`users.role` 落库为 `admin`。切到 `AUTH_MODE=privy` 后第一次登录会建成学生，把 `/api/me` 返回的 `did:privy:xxx`
-填进该变量再重启即可获得管理员。白名单只在服务端 env 生效，请求头/请求体依旧无法影响角色。
+`users.role` 落库为 `admin`。`BOOTSTRAP_ADMIN_WALLETS` 是逗号分隔的钱包白名单，但只有后端验证
+`privy-id-token` 后得到的钱包地址才会生效，不能用普通请求头伪造。前端需在 Privy Dashboard 的
+`User management > Authentication > Advanced` 打开 `Return user data in an identity token`。
+白名单只在服务端 env 生效，请求头/请求体里的角色声明依旧无法影响角色。
 
 **角色一律以数据库 `users.role` 为准，绝不信任请求体或请求头里的角色声明。**
 未登录 401 `UNAUTHENTICATED`；已登录但角色不足 403 `FORBIDDEN`。

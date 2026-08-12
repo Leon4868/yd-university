@@ -61,6 +61,18 @@ export class PostgresUserRepository implements UserRepository {
     }
     return mapUserRow(row);
   }
+
+  async updatePrimaryWallet(userId: string, primaryWallet: string): Promise<User> {
+    const rows = await this.sql<UserRow[]>`
+      UPDATE users
+      SET primary_wallet = COALESCE(primary_wallet, ${primaryWallet}), updated_at = now()
+      WHERE id = ${userId}
+      RETURNING id, privy_user_id, username, avatar_url, primary_wallet, role
+    `;
+    const row = rows[0];
+    if (!row) throw new Error("updatePrimaryWallet 未找到用户");
+    return mapUserRow(row);
+  }
 }
 
 function mapUserRow(row: UserRow): User {

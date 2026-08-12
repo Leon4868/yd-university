@@ -541,4 +541,39 @@ describe("外部身份提供方接入", () => {
     assert.equal(store.users.find((user) => user.privyUserId === "demo-student")?.role, "admin");
     await app.close();
   });
+
+  it("经过 verifier 验证的钱包白名单可以引导管理员，普通请求头不能伪造", async () => {
+    const store = new MockDataStore();
+    const wallet = "0x934124d582dd6618309b0905b4de2631a2892eee";
+    const app = await buildApp({
+      repositories: createMockRepositories(store),
+      bootstrapAdminWallets: [wallet],
+      authVerifier: {
+        autoProvision: true,
+        async verify(token: string, identityToken?: string) {
+          return token === "real-privy-jwt" && identityToken === "verified-identity-token"
+            ? { subject: "did:privy:wallet-admin", wallet }
+            : token === "real-privy-jwt" ? { subject: "did:privy:wallet-student" } : null;
+        },
+      },
+    });
+
+    const forged = await app.inject({
+      method: "GET",
+      url: "/api/me",
+      headers: { authorization: "Bearer real-privy-jwt", "x-wallet-address": wallet },
+    });
+    assert.equal(forged.statusCode, 200);
+    assert.equal(forged.json().data.role, "student");
+
+    const verified = await app.inject({
+      method: "GET",
+      url: "/api/me",
+      headers: { authorization: "Bearer real-privy-jwt", "privy-id-token": "verified-identity-token" },
+    });
+    assert.equal(verified.statusCode, 200);
+    assert.equal(verified.json().data.role, "admin");
+    assert.equal(verified.json().data.primaryWallet, wallet);
+    await app.close();
+  });
 });

@@ -9,7 +9,10 @@ const authVerifier = createAuthVerifier(env);
 const bootstrapAdminSubjects = env.BOOTSTRAP_ADMIN_SUBJECTS.split(",")
   .map((subject) => subject.trim())
   .filter(Boolean);
-const app = await buildApp({ repositories, authVerifier, bootstrapAdminSubjects, logger: true });
+const bootstrapAdminWallets = env.BOOTSTRAP_ADMIN_WALLETS.split(",")
+  .map((wallet) => wallet.trim().toLowerCase())
+  .filter((wallet) => /^0x[0-9a-f]{40}$/.test(wallet));
+const app = await buildApp({ repositories, authVerifier, bootstrapAdminSubjects, bootstrapAdminWallets, logger: true });
 
 try {
   await app.listen({ host: env.HOST, port: env.PORT });

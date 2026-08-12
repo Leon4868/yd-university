@@ -1,15 +1,25 @@
 import { GraduationCap, WalletCards } from "lucide-react";
 import type { ReactNode } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext.tsx";
+import { displayYdBalance, useYdBalance } from "../web3/useYdBalance.ts";
 
 function shortenAddress(address: string) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+const roleLabels = {
+  student: "学生",
+  teacher: "老师",
+  merchant: "商户",
+  admin: "管理员",
+} as const;
+
 export function AppShell({ children }: { children: ReactNode }) {
   const auth = useAuth();
+  const ydBalance = useYdBalance();
+  const navigate = useNavigate();
   const isAdmin = auth.authenticated && auth.role === "admin";
   return (
     <div className="app-shell">
@@ -35,9 +45,14 @@ export function AppShell({ children }: { children: ReactNode }) {
               </label>
             )}
             <span className="network-badge"><i />Ethereum Sepolia</span>
-            <span className="balance"><WalletCards size={16} />128.40 YD</span>
-            {auth.authenticated && auth.walletAddress ? (
-              <Link to="/profile" className="wallet-button">{shortenAddress(auth.walletAddress)}</Link>
+            <span className="balance" title={ydBalance.error ?? undefined}><WalletCards size={16} />{displayYdBalance(ydBalance.balance)} YD</span>
+            {auth.authenticated ? (
+              <>
+                <Link to="/profile" className="wallet-button" title={`当前身份：${roleLabels[auth.role]}`}>
+                  {auth.walletAddress ? shortenAddress(auth.walletAddress) : auth.displayName} · {roleLabels[auth.role]}
+                </Link>
+                <button type="button" className="logout-button" onClick={() => { auth.logout(); navigate("/login"); }}>退出登录</button>
+              </>
             ) : (
               <button type="button" className="wallet-button" onClick={auth.login}>登录</button>
             )}

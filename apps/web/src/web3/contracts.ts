@@ -68,3 +68,9 @@ export const courseMarketAbi = [
 export function sepoliaTransactionUrl(hash: string) {
   return `https://sepolia.etherscan.io/tx/${hash}`;
 }
+
+export function sepoliaCertificateUrl(tokenId: string | number) {
+  const certificate = contractAddresses.courseCertificate;
+  if (!certificate) return "https://sepolia.etherscan.io";
+  return `https://sepolia.etherscan.io/token/${certificate}?a=${tokenId}`;
+}

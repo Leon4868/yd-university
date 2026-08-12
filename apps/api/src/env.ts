@@ -15,6 +15,8 @@ const envSchema = z
     PRIVY_APP_SECRET: z.string().min(1).optional(),
     /** 逗号分隔的 privy_user_id 白名单，登录时提升为管理员，用于首次引导 */
     BOOTSTRAP_ADMIN_SUBJECTS: z.string().default(""),
+    /** 逗号分隔的钱包白名单，必须来自已验证的 Privy identity token */
+    BOOTSTRAP_ADMIN_WALLETS: z.string().default(""),
   })
   .superRefine((value, context) => {
     if (value.COURSE_DATA_SOURCE === "postgres" && !value.DATABASE_URL) {

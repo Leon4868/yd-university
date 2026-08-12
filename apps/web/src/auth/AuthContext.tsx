@@ -1,4 +1,4 @@
-import { PrivyProvider, usePrivy, useWallets, type EIP1193Provider } from "@privy-io/react-auth";
+import { PrivyProvider, useIdentityToken, useLogin, usePrivy, useWallets, type EIP1193Provider } from "@privy-io/react-auth";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { ApiError, getMe } from "../api/client.ts";
@@ -23,6 +23,7 @@ interface AuthState {
   profileLoading: boolean;
   /** /api/me 取不到时的降级说明，UI 必须明示当前是本地演示身份 */
   profileError: string | null;
+  loginError: string | null;
   demoIdentities: DemoIdentity[];
   demoUserId: string | null;
   walletReady: boolean;
@@ -43,17 +44,23 @@ const TOKEN_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 // 这里只决定「用哪个 subject 发请求」，真实角色始终由 /api/me 的 users.role 决定，
 // 换身份换不出权限，后端 AUTH_MODE=privy 时整块入口不会出现。
 const demoIdentityEnv: string = import.meta.env.VITE_DEMO_USER_IDS ?? "";
+const demoRoleLabels: Record<string, string> = {
+  "demo-student": "学生",
+  "demo-teacher": "老师",
+  "demo-merchant": "商户",
+  "demo-admin": "管理员",
+};
 const demoIdentities: DemoIdentity[] = demoIdentityEnv
   .split(",")
   .map((item) => item.trim())
   .filter(Boolean)
-  .map((privyUserId) => ({ privyUserId, label: privyUserId }));
+  .map((privyUserId) => ({ privyUserId, label: demoRoleLabels[privyUserId] ?? privyUserId }));
 if (demoIdentities.length === 0) {
   demoIdentities.push(
-    { privyUserId: "demo-student", label: "学生 demo-student" },
-    { privyUserId: "demo-teacher", label: "教师 demo-teacher" },
-    { privyUserId: "demo-merchant", label: "商家 demo-merchant" },
-    { privyUserId: "demo-admin", label: "管理员 demo-admin" },
+    { privyUserId: "demo-student", label: "学生" },
+    { privyUserId: "demo-teacher", label: "老师" },
+    { privyUserId: "demo-merchant", label: "商户" },
+    { privyUserId: "demo-admin", label: "管理员" },
   );
 }
 const demoWallet = "0x72F40000000000000000000000000000000091A2";
@@ -63,6 +70,8 @@ interface Identity {
   authenticated: boolean;
   token: string | null;
   demoMode: boolean;
+  loginError: string | null;
+  identityToken: string | null;
   fallbackDisplayName: string;
   fallbackWallet: string | null;
   login: () => void;
@@ -94,8 +103,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 function PrivyAuthBridge({ children }: { children: ReactNode }) {
-  const { ready, authenticated, login, logout, user, getAccessToken } = usePrivy();
+  const { ready, authenticated, logout, user, getAccessToken } = usePrivy();
+  const { identityToken } = useIdentityToken();
   const { wallets, ready: walletsReady } = useWallets();
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const { login: openLogin } = useLogin({
+    onError: (error) => setLoginError(formatPrivyLoginError(String(error))),
+  });
   const ethereumWallet = wallets.find((wallet) => wallet.type === "ethereum");
   const [token, setToken] = useState<string | null>(null);
   useEffect(() => {
@@ -118,14 +132,16 @@ function PrivyAuthBridge({ children }: { children: ReactNode }) {
       authenticated,
       token,
       demoMode: false,
+      loginError,
+      identityToken,
       fallbackDisplayName: user?.email?.address?.split("@")[0] ?? "学习者",
       fallbackWallet: user?.wallet?.address ?? null,
-      login: () => login(),
-      logout: () => void logout(),
+      login: () => { setLoginError(null); openLogin(); },
+      logout: () => { setLoginError(null); void logout(); },
       getEthereumProvider: ethereumWallet ? () => ethereumWallet.getEthereumProvider() : null,
       switchEthereumChain: ethereumWallet ? (chainId: number) => ethereumWallet.switchChain(chainId) : null,
     }),
-    [authenticated, ethereumWallet, login, logout, ready, token, user],
+    [authenticated, ethereumWallet, identityToken, loginError, logout, openLogin, ready, token, user],
   );
   return <ProfileBridge identity={identity} demo={null} walletReady={walletsReady}>{children}</ProfileBridge>;
 }
@@ -139,6 +155,8 @@ function DemoAuthBridge({ children }: { children: ReactNode }) {
       authenticated,
       token: authenticated ? `demo:${demoUserId}` : null,
       demoMode: true,
+      loginError: null,
+      identityToken: null,
       fallbackDisplayName: demoIdentities.find((item) => item.privyUserId === demoUserId)?.label ?? demoUserId,
       fallbackWallet: authenticated ? demoWallet : null,
       login: () => setAuthenticated(true),
@@ -168,7 +186,7 @@ function ProfileBridge({ identity, demo, walletReady, children }: { identity: Id
     }
     const controller = new AbortController();
     setProfileLoading(true);
-    getMe(token, controller.signal)
+    getMe(token, controller.signal, identity.identityToken)
       .then((current) => {
         if (controller.signal.aborted) return;
         setProfile(current);
@@ -184,7 +202,7 @@ function ProfileBridge({ identity, demo, walletReady, children }: { identity: Id
         if (!controller.signal.aborted) setProfileLoading(false);
       });
     return () => controller.abort();
-  }, [authenticated, token, reloadKey]);
+  }, [authenticated, identity.identityToken, token, reloadKey]);
 
   const refreshProfile = useCallback(() => setReloadKey((current) => current + 1), []);
 
@@ -200,6 +218,7 @@ function ProfileBridge({ identity, demo, walletReady, children }: { identity: Id
       demoMode: identity.demoMode,
       profileLoading,
       profileError,
+      loginError: identity.loginError,
       demoIdentities: identity.demoMode ? demoIdentities : [],
       demoUserId: demo?.demoUserId ?? null,
       walletReady,
@@ -213,6 +232,16 @@ function ProfileBridge({ identity, demo, walletReady, children }: { identity: Id
     [demo, identity, profile, profileError, profileLoading, refreshProfile, walletReady],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+function formatPrivyLoginError(error: string) {
+  if (error === "disallowed_login_method") {
+    return "Google 或 GitHub 登录尚未在 Privy 控制台启用，请在 Login methods → Socials 中打开后重试。";
+  }
+  if (error === "user_rejected") {
+    return "你取消了登录授权。";
+  }
+  return `登录失败（${error}），请稍后重试。`;
 }
 
 export function useAuth() {

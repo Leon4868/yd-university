@@ -41,4 +41,11 @@ export class MockUserRepository implements UserRepository {
     user.role = "admin";
     return { ...user };
   }
+
+  async updatePrimaryWallet(userId: string, primaryWallet: string): Promise<User> {
+    const user = this.store.users.find((item) => item.id === userId);
+    if (!user) throw new Error("updatePrimaryWallet 未找到用户");
+    user.primaryWallet ??= primaryWallet;
+    return { ...user };
+  }
 }

@@ -23,12 +23,15 @@ export function createAuthGuards(
   verifier: AuthVerifier,
   users: UserRepository,
   bootstrapAdminSubjects: readonly string[] = [],
+  bootstrapAdminWallets: readonly string[] = [],
 ): AuthGuards {
   const adminSubjects = new Set(bootstrapAdminSubjects);
+  const adminWallets = new Set(bootstrapAdminWallets.map((wallet) => wallet.toLowerCase()));
 
   /** 白名单里的账号在登录时把管理员角色落库，之后请求仍只读 users.role */
-  async function applyBootstrapAdmin(user: User, subject: string): Promise<User> {
-    if (user.role === "admin" || !adminSubjects.has(subject)) {
+  async function applyBootstrapAdmin(user: User, subject: string, wallet?: string): Promise<User> {
+    const isBootstrapAdmin = adminSubjects.has(subject) || (wallet ? adminWallets.has(wallet.toLowerCase()) : false);
+    if (user.role === "admin" || !isBootstrapAdmin) {
       return user;
     }
     return users.promoteToAdmin(user.id);
@@ -42,13 +45,16 @@ export function createAuthGuards(
     if (!token) {
       return fail(reply, 401, "UNAUTHENTICATED", "缺少登录凭证");
     }
-    const identity = await verifier.verify(token);
+    const identity = await verifier.verify(token, readIdentityToken(request.headers["privy-id-token"]));
     if (!identity) {
       return fail(reply, 401, "UNAUTHENTICATED", "登录凭证无效");
     }
     const existing = await users.findByPrivyUserId(identity.subject);
     if (existing) {
-      request.currentUser = await applyBootstrapAdmin(existing, identity.subject);
+      const current = identity.wallet && !existing.primaryWallet
+        ? await users.updatePrimaryWallet(existing.id, identity.wallet)
+        : existing;
+      request.currentUser = await applyBootstrapAdmin(current, identity.subject, identity.wallet);
       return;
     }
     if (!verifier.autoProvision) {
@@ -60,7 +66,7 @@ export function createAuthGuards(
       username: defaultUsername(identity.subject),
       primaryWallet: identity.wallet ?? null,
     });
-    request.currentUser = await applyBootstrapAdmin(provisioned, identity.subject);
+    request.currentUser = await applyBootstrapAdmin(provisioned, identity.subject, identity.wallet);
   };
 
   const requireRole = (...roles: UserRole[]): AuthGuard =>
@@ -99,4 +105,9 @@ function readBearerToken(header: string | undefined): string | null {
   }
   const matched = /^Bearer\s+(.+)$/i.exec(header.trim());
   return matched?.[1]?.trim() || null;
+}
+
+function readIdentityToken(header: string | string[] | undefined): string | undefined {
+  const value = Array.isArray(header) ? header[0] : header;
+  return value?.trim() || undefined;
 }

@@ -50,6 +50,16 @@ export interface PurchaseState {
   purchased: boolean;
 }
 
+export async function readYdBalance(provider: EIP1193Provider): Promise<{ account: Address; balance: string }> {
+  if (!hasSepoliaContractConfig) throw new Error("Sepolia 合约地址尚未配置");
+  await assertSepolia(provider);
+  const account = await getConnectedAccount(provider);
+  const { publicClient } = clients(provider, account);
+  const token = requireAddress(contractAddresses.ydToken, "VITE_YD_TOKEN_ADDRESS");
+  const balance = await publicClient.readContract({ address: token, abi: ydTokenAbi, functionName: "balanceOf", args: [account] });
+  return { account, balance: formatUnits(balance, TOKEN_DECIMALS) };
+}
+
 export async function readPurchaseState(provider: EIP1193Provider, courseId: string, priceYD: string): Promise<PurchaseState> {
   if (!hasSepoliaContractConfig) throw new Error("Sepolia 合约地址尚未配置");
   await assertSepolia(provider);

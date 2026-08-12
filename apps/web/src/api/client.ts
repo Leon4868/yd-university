@@ -41,6 +41,7 @@ export function apiErrorMessage(error: unknown, fallback = "请求失败，请�
 
 interface RequestOptions {
   token?: string | null;
+  identityToken?: string | null;
   body?: unknown;
   query?: Record<string, string | undefined>;
   signal?: AbortSignal;
@@ -72,6 +73,7 @@ function buildUrl(path: string, query?: Record<string, string | undefined>) {
 async function request<T>(method: string, path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {};
   if (options.token) headers.Authorization = `Bearer ${options.token}`;
+  if (options.identityToken) headers["privy-id-token"] = options.identityToken;
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   let response: Response;
   try {
@@ -101,8 +103,8 @@ async function request<T>(method: string, path: string, options: RequestOptions 
 }
 
 // 身份
-export function getMe(token: string, signal?: AbortSignal) {
-  return request<CurrentUser>("GET", "/api/me", { token, signal });
+export function getMe(token: string, signal?: AbortSignal, identityToken?: string | null) {
+  return request<CurrentUser>("GET", "/api/me", { token, identityToken, signal });
 }
 
 // 创作者申请

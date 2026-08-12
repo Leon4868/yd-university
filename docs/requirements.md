@@ -68,11 +68,10 @@ flowchart TD
 
 ### 待办（尚未实现，不要当成已完成）
 
-- **Privy 真实令牌校验**：`AUTH_MODE=privy` 只做到「缺 `PRIVY_APP_ID` / `PRIVY_APP_SECRET` 就启动失败」，
-  `PrivyAuthVerifier.verify()` 目前直接抛 `NOT_IMPLEMENTED`。当前能跑的只有 `AUTH_MODE=demo` 的
-  `demo:<privy_user_id>` 令牌，**仅限本地**。
-- **用户建号**：后端没有注册端点，`UserRepository` 只有 `findByPrivyUserId`。mock 模式靠预置的四个演示账号，
-  postgres 模式要手工往 `users` 插行。首登自动建号要等 Privy 接入后一起做。
+- **Privy 控制台配置**：真实登录需要配置 `VITE_PRIVY_APP_ID`，并在 Privy 控制台开启 Google、GitHub；
+  若要按钱包识别管理员，还需开启 `Return user data in an identity token`，后端只信任签名验证后的
+  `privy-id-token` 钱包地址与 `BOOTSTRAP_ADMIN_WALLETS` 白名单。
+- **用户建号**：Privy access token 校验通过后，postgres 模式首登会自动创建学生账号；演示模式仍使用预置账号。
 - **课程上链联动**：上架只改数据库 `status`，不会调用 `CourseRegistry.createCourse`，
   `chain_course_id` / `registry_address` / `publish_tx_hash` 仍恒为空，购买链路还没接上审核结果。
 - **商家能力**：商家可以申请、可以被审核通过，但 `/creator` 里商家侧只有占位，没有分账配置或商家专属操作。

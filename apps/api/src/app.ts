@@ -18,6 +18,7 @@ interface BuildAppOptions {
   repositories?: Repositories;
   authVerifier?: AuthVerifier;
   bootstrapAdminSubjects?: readonly string[];
+  bootstrapAdminWallets?: readonly string[];
   logger?: boolean;
 }
 
@@ -28,12 +29,13 @@ export async function buildApp(options: BuildAppOptions = {}) {
     options.authVerifier ?? new DemoAuthVerifier(),
     repositories.users,
     options.bootstrapAdminSubjects,
+    options.bootstrapAdminWallets,
   );
 
   await app.register(cors, {
-    origin: ["http://localhost:5173"],
+    origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
     methods: ["GET", "POST", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "privy-id-token"],
   });
 
   app.decorateRequest("currentUser", null);
