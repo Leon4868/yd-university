@@ -1,4 +1,4 @@
-import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
+import { PrivyProvider, usePrivy, useWallets, type EIP1193Provider } from "@privy-io/react-auth";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { ApiError, getMe } from "../api/client.ts";
@@ -25,6 +25,9 @@ interface AuthState {
   profileError: string | null;
   demoIdentities: DemoIdentity[];
   demoUserId: string | null;
+  walletReady: boolean;
+  getEthereumProvider: (() => Promise<EIP1193Provider>) | null;
+  switchEthereumChain: ((chainId: number) => Promise<void>) | null;
   switchDemoIdentity: (privyUserId: string) => void;
   refreshProfile: () => void;
   login: () => void;
@@ -64,6 +67,8 @@ interface Identity {
   fallbackWallet: string | null;
   login: () => void;
   logout: () => void;
+  getEthereumProvider: (() => Promise<EIP1193Provider>) | null;
+  switchEthereumChain: ((chainId: number) => Promise<void>) | null;
 }
 
 interface DemoControls {
@@ -90,6 +95,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 function PrivyAuthBridge({ children }: { children: ReactNode }) {
   const { ready, authenticated, login, logout, user, getAccessToken } = usePrivy();
+  const { wallets, ready: walletsReady } = useWallets();
+  const ethereumWallet = wallets.find((wallet) => wallet.type === "ethereum");
   const [token, setToken] = useState<string | null>(null);
   useEffect(() => {
     if (!authenticated) {
@@ -115,10 +122,12 @@ function PrivyAuthBridge({ children }: { children: ReactNode }) {
       fallbackWallet: user?.wallet?.address ?? null,
       login: () => login(),
       logout: () => void logout(),
+      getEthereumProvider: ethereumWallet ? () => ethereumWallet.getEthereumProvider() : null,
+      switchEthereumChain: ethereumWallet ? (chainId: number) => ethereumWallet.switchChain(chainId) : null,
     }),
-    [authenticated, login, logout, ready, token, user],
+    [authenticated, ethereumWallet, login, logout, ready, token, user],
   );
-  return <ProfileBridge identity={identity} demo={null}>{children}</ProfileBridge>;
+  return <ProfileBridge identity={identity} demo={null} walletReady={walletsReady}>{children}</ProfileBridge>;
 }
 
 function DemoAuthBridge({ children }: { children: ReactNode }) {
@@ -134,14 +143,16 @@ function DemoAuthBridge({ children }: { children: ReactNode }) {
       fallbackWallet: authenticated ? demoWallet : null,
       login: () => setAuthenticated(true),
       logout: () => setAuthenticated(false),
+      getEthereumProvider: null,
+      switchEthereumChain: null,
     }),
     [authenticated, demoUserId],
   );
   const demo = useMemo<DemoControls>(() => ({ demoUserId, switchIdentity: setDemoUserId }), [demoUserId]);
-  return <ProfileBridge identity={identity} demo={demo}>{children}</ProfileBridge>;
+  return <ProfileBridge identity={identity} demo={demo} walletReady={false}>{children}</ProfileBridge>;
 }
 
-function ProfileBridge({ identity, demo, children }: { identity: Identity; demo: DemoControls | null; children: ReactNode }) {
+function ProfileBridge({ identity, demo, walletReady, children }: { identity: Identity; demo: DemoControls | null; walletReady: boolean; children: ReactNode }) {
   const [profile, setProfile] = useState<CurrentUser | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -191,12 +202,15 @@ function ProfileBridge({ identity, demo, children }: { identity: Identity; demo:
       profileError,
       demoIdentities: identity.demoMode ? demoIdentities : [],
       demoUserId: demo?.demoUserId ?? null,
+      walletReady,
+      getEthereumProvider: identity.getEthereumProvider,
+      switchEthereumChain: identity.switchEthereumChain,
       switchDemoIdentity: (privyUserId: string) => demo?.switchIdentity(privyUserId),
       refreshProfile,
       login: identity.login,
       logout: identity.logout,
     }),
-    [demo, identity, profile, profileError, profileLoading, refreshProfile],
+    [demo, identity, profile, profileError, profileLoading, refreshProfile, walletReady],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -7,6 +7,7 @@ export interface CourseSection {
 
 export interface Course {
   slug: string;
+  chainCourseId?: string;
   title: string;
   summary: string;
   category: string;
@@ -29,6 +30,7 @@ export interface Course {
 export const courses: Course[] = [
   {
     slug: "solidity-from-zero",
+    chainCourseId: "1",
     title: "Solidity 智能合约开发从入门到实战",
     summary: "Cyfrin Updraft 免费课，用 Remix 从变量函数写到部署合约，五小时入门 Solidity。",
     category: "Solidity",

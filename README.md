@@ -215,7 +215,7 @@ npx hardhat ignition deploy --network sepolia \
 
 ### 4. 回填前端地址
 
-部署完成后把合约地址写入私有 `.env`（占位符见 `apps/web/.env.example`）：
+部署完成后把合约地址写入前端 `.env`（当前 Sepolia 示例值已写入 `apps/web/.env.example`）：
 `VITE_CHAIN_ID=11155111`、`VITE_YD_TOKEN_ADDRESS`、`VITE_COURSE_REGISTRY_ADDRESS`、
 `VITE_COURSE_MARKET_ADDRESS`、`VITE_COURSE_CERTIFICATE_ADDRESS`。`CompletionReceiver`
 地址供后端/CRE 配置使用。不要提交任何真实凭证。
