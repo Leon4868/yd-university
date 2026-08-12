@@ -4,6 +4,7 @@ coverage/
 artifacts/
 cache/
 ignition/deployments/
+contracts/ignition/deployments/
 *.tsbuildinfo
 .env
 .env.*

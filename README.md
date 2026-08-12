@@ -220,6 +220,20 @@ npx hardhat ignition deploy --network sepolia \
 `VITE_COURSE_MARKET_ADDRESS`、`VITE_COURSE_CERTIFICATE_ADDRESS`。`CompletionReceiver`
 地址供后端/CRE 配置使用。不要提交任何真实凭证。
 
+### 5. 链上验收脚本
+
+部署后可以按顺序跑三条 Sepolia smoke test 命令：
+
+```bash
+npm run chain:verify -w @yd/contracts
+npm run chain:create-course -w @yd/contracts
+npm run chain:smoke -w @yd/contracts
+```
+
+默认会创建/复用 metadata 为 `ipfs://yd-university/solidity-from-zero` 的演示课程，价格 `4 YD`，
+分账 `70/20/10`。如需覆盖，可在命令前追加：
+`COURSE_METADATA_URI=... COURSE_PRICE_YD=... COURSE_TEACHER_ADDRESS=... COURSE_MERCHANT_ADDRESS=...`。
+
 ## 课程来源
 
 三门演示课程的正文来源于公开免费平台 **Cyfrin Updraft**（<https://updraft.cyfrin.io>），课程级来源链接会保留在课程信息中；章节不提供视频跳转，学生在平台内点击完成即可记录学习进度：

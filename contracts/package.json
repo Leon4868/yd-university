@@ -7,9 +7,12 @@
     "build": "hardhat build",
     "test": "hardhat test",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint test ignition hardhat.config.ts",
+    "lint": "oxlint test ignition scripts hardhat.config.ts",
     "deploy:local": "hardhat ignition deploy ignition/modules/YDUniversity.ts",
-    "deploy:sepolia": "hardhat ignition deploy --network sepolia --parameters ignition/parameters.sepolia.json ignition/modules/YDUniversity.ts"
+    "deploy:sepolia": "hardhat ignition deploy --network sepolia --parameters ignition/parameters.sepolia.json ignition/modules/YDUniversity.ts",
+    "chain:verify": "hardhat run --network sepolia scripts/verify-deployment.ts",
+    "chain:create-course": "hardhat run --network sepolia scripts/create-demo-course.ts",
+    "chain:smoke": "hardhat run --network sepolia scripts/smoke-purchase-and-certificate.ts"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0"
