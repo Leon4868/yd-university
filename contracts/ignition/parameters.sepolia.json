@@ -1,0 +1,8 @@
+{
+  "YDUniversityModule": {
+    "admin": "0x934124d582dd6618309b0905b4DE2631A2892EEe",
+    "platformTreasury": "0x934124d582dd6618309b0905b4DE2631A2892EEe",
+    "defaultTeacher": "0xe1E5016aF35DfD90ccb6Bc03654D156b3f29764D",
+    "defaultMerchant": "0x283A754de403b0Ee48560964f9f7C21491916499"
+  }
+}

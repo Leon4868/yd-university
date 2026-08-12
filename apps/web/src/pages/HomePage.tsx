@@ -47,7 +47,7 @@ export function HomePage() {
       </section>
       <section className="continue-card page-container">
         <div className="continue-cover violet"><span>72%</span></div>
-        <div className="continue-content"><span className="overline">继续学习</span><h3>Solidity 智能合约从入门到实战</h3><p>下一节：部署第一个合约</p><div className="progress"><i style={{ width: "72%" }} /></div></div>
+        <div className="continue-content"><span className="overline">继续学习</span><h3>Solidity 智能合约开发从入门到实战</h3><p>下一节：部署你的第一个合约</p><div className="progress"><i style={{ width: "72%" }} /></div></div>
         <Link to="/learn/solidity-from-zero" className="button primary">继续学习<ArrowRight size={18} /></Link>
       </section>
     </>

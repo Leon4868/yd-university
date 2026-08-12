@@ -142,8 +142,9 @@ a { color: inherit; text-decoration: none; }
 .learn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .learn-grid span { display: flex; gap: 9px; color: #475467; font-size: 14px; }
 .learn-grid svg { width: 18px; color: var(--success); flex: none; }
-.syllabus-row { display: grid; grid-template-columns: 34px 1fr auto 20px; align-items: center; gap: 10px; min-height: 58px; border-top: 1px solid var(--border); }
+.syllabus-row { display: grid; grid-template-columns: 34px minmax(0,1fr) auto auto; align-items: center; gap: 10px; min-height: 58px; border-top: 1px solid var(--border); }
 .syllabus-row > span, .syllabus-row small { color: var(--muted); font-size: 12px; }
+.syllabus-row a, .source-link { display: inline-flex; align-items: center; gap: 5px; color: var(--primary); font-size: 12px; font-weight: 600; white-space: nowrap; }
 .purchase-card { position: sticky; top: 94px; padding: 24px; border-radius: 18px; background: #fff; border: 1px solid var(--border); box-shadow: 0 14px 40px rgba(16,24,40,.07); }
 .purchase-header { display: flex; flex-direction: column; gap: 6px; }
 .purchase-header span, .purchase-header small { color: var(--muted); font-size: 12px; }
@@ -195,10 +196,10 @@ a { color: inherit; text-decoration: none; }
 .lesson-list { max-height: 720px; overflow: auto; background: #fff; border: 1px solid var(--border); border-radius: 16px; }
 .lesson-list > div { position: sticky; top: 0; z-index: 1; padding: 18px; display: flex; justify-content: space-between; background: #fff; border-bottom: 1px solid var(--border); }
 .lesson-list > div span { color: var(--muted); font-size: 11px; }
-.lesson-list button { width: 100%; min-height: 58px; display: grid; grid-template-columns: 24px 1fr 18px; text-align: left; align-items: center; padding: 10px 14px; border: 0; border-bottom: 1px solid #f0f1f5; background: #fff; color: #475467; }
-.lesson-list button.current { background: #f0f0ff; color: var(--primary); }
-.lesson-list button > span { color: var(--success); }
-.lesson-list button div { display: flex; flex-direction: column; gap: 3px; }
+.lesson-list button, .lesson-list > a { width: 100%; min-height: 58px; display: grid; grid-template-columns: 24px minmax(0,1fr) 18px; text-align: left; align-items: center; padding: 10px 14px; border: 0; border-bottom: 1px solid #f0f1f5; background: #fff; color: #475467; }
+.lesson-list button.current, .lesson-list > a.current { background: #f0f0ff; color: var(--primary); }
+.lesson-list button > span, .lesson-list > a > span { color: var(--success); }
+.lesson-list button div, .lesson-list > a div { display: flex; flex-direction: column; gap: 3px; }
 .lesson-list small { color: var(--muted); font-size: 9px; }
 .lesson-list strong { font-size: 12px; }
 

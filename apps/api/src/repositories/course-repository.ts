@@ -1,6 +1,6 @@
-import type { CourseSummary } from "../domain/course.js";
+import type { CourseDetail, CourseSummary } from "../domain/course.js";
 
 export interface CourseRepository {
   listPublished(): Promise<CourseSummary[]>;
-  findPublishedBySlug(slug: string): Promise<CourseSummary | null>;
+  findPublishedDetailBySlug(slug: string): Promise<CourseDetail | null>;
 }

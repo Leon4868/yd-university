@@ -2,7 +2,7 @@ import { Check, ChevronRight, CircleDollarSign, ExternalLink, Play, ShieldCheck,
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { courses } from "../data/courses.ts";
+import { courses, formatDuration } from "../data/courses.ts";
 
 type PurchaseStep = "approve" | "buy" | "complete";
 
@@ -20,10 +20,10 @@ export function CourseDetailPage() {
       <div className="detail-layout">
         <div className="detail-main">
           <div className={`detail-cover ${course.tone}`}><button aria-label="播放课程预览"><Play fill="currentColor" /></button><span>预览课程 · 02:18</span></div>
-          <div className="detail-title"><div className="chip-row"><span className="chip">{course.level}</span><span>{course.category}</span></div><h1>{course.title}</h1><p>{course.summary}</p></div>
-          <div className="teacher-profile"><span className="avatar">A</span><div><strong>{course.teacherName}</strong><span>Solidity 讲师 · 智能合约工程师</span></div><div className="teacher-stats"><span><Star size={16} fill="currentColor" />{course.rating}</span><span><Users size={16} />{course.studentCount.toLocaleString()} 名学员</span></div></div>
+          <div className="detail-title"><div className="chip-row"><span className="chip">{course.level}</span><span>{course.category}</span>{course.isFree && <span>原课程免费</span>}<a className="source-link" href={course.courseUrl} target="_blank" rel="noreferrer">课程来源：{course.providerName}<ExternalLink size={13} /></a></div><h1>{course.title}</h1><p>{course.summary}</p></div>
+          <div className="teacher-profile"><span className="avatar">{course.teacherName.slice(0, 1)}</span><div><strong>{course.teacherName}</strong><span>{course.providerName} 讲师</span>{course.teacherXUrl && <a className="source-link" href={course.teacherXUrl} target="_blank" rel="noreferrer">{course.teacherXHandle ?? "讲师 X 主页"}<ExternalLink size={13} /></a>}</div><div className="teacher-stats"><span><Star size={16} fill="currentColor" />{course.rating}</span><span><Users size={16} />{course.studentCount.toLocaleString()} 名学员</span></div></div>
           <section className="content-block"><h2>你将学到什么</h2><div className="learn-grid"><span><Check />理解 EVM 与 Solidity 核心语法</span><span><Check />使用 OpenZeppelin 构建安全合约</span><span><Check />编写边界、权限和攻击测试</span><span><Check />部署并在 Sepolia 验证合约</span></div></section>
-          <section className="content-block"><h2>课程大纲</h2>{["第一章 · 认识 EVM 与开发环境", "第二章 · Solidity 数据与函数", "第三章 · ERC 标准与合约安全", "第四章 · 测试、部署与验证"].map((title, index) => <div className="syllabus-row" key={title}><span>{String(index + 1).padStart(2, "0")}</span><strong>{title}</strong><small>{index + 2} 节</small><ChevronRight size={17} /></div>)}</section>
+          <section className="content-block"><h2>课程大纲 · {course.sections.length} 节</h2>{course.sections.map((section) => <div className="syllabus-row" key={section.position}><span>{String(section.position).padStart(2, "0")}</span><strong>{section.title}</strong><small>{formatDuration(section.durationSeconds) || section.originalTitle}</small><a href={section.url} target="_blank" rel="noreferrer">去原课程<ExternalLink size={14} /></a></div>)}</section>
         </div>
         <aside className="purchase-card">
           <div className="purchase-header"><span>课程价格</span><strong>{course.priceYD} YD</strong><small>当前余额 128.40 YD</small></div>

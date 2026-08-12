@@ -1,11 +1,14 @@
 import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
 import { createContext, type ReactNode, useContext, useMemo, useState } from "react";
 
+export type UserRole = "student" | "teacher" | "merchant" | "admin";
+
 interface AuthState {
   ready: boolean;
   authenticated: boolean;
   displayName: string;
   walletAddress: string | null;
+  role: UserRole;
   demoMode: boolean;
   login: () => void;
   logout: () => void;
@@ -22,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         appId={privyAppId}
         config={{
           appearance: { theme: "light", accentColor: "#5B5CE2" },
-          loginMethods: ["email", "wallet"],
+          loginMethods: ["email", "google", "github", "wallet"],
         }}
       >
         <PrivyAuthBridge>{children}</PrivyAuthBridge>
@@ -40,6 +43,8 @@ function PrivyAuthBridge({ children }: { children: ReactNode }) {
       authenticated,
       displayName: user?.email?.address?.split("@")[0] ?? "学习者",
       walletAddress: user?.wallet?.address ?? null,
+      // 角色由后端审核结果下发，接线前统一按学生处理
+      role: "student",
       demoMode: false,
       login: () => login(),
       logout: () => void logout(),
@@ -57,6 +62,7 @@ function DemoAuthBridge({ children }: { children: ReactNode }) {
       authenticated,
       displayName: "Leon",
       walletAddress: authenticated ? "0x72F40000000000000000000000000000000091A2" : null,
+      role: "student",
       demoMode: true,
       login: () => setAuthenticated(true),
       logout: () => setAuthenticated(false),

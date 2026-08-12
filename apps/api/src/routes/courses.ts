@@ -18,7 +18,7 @@ export async function registerCourseRoutes(app: FastifyInstance, repository: Cou
     if (!parsed.success) {
       return reply.code(400).send({ error: "INVALID_COURSE_SLUG" });
     }
-    const course = await repository.findPublishedBySlug(parsed.data.slug);
+    const course = await repository.findPublishedDetailBySlug(parsed.data.slug);
     if (!course) {
       return reply.code(404).send({ error: "COURSE_NOT_FOUND" });
     }

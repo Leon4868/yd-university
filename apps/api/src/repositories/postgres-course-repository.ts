@@ -1,6 +1,6 @@
 import postgres, { type Sql } from "postgres";
 
-import type { CourseLevel, CourseSummary } from "../domain/course.js";
+import type { CourseDetail, CourseLevel, CourseSection, CourseSummary } from "../domain/course.js";
 import type { CourseRepository } from "./course-repository.js";
 
 interface CourseRow {
@@ -12,14 +12,27 @@ interface CourseRow {
   category: string;
   level: CourseLevel;
   teacher_name: string;
+  teacher_x_url: string | null;
   teacher_wallet: string;
   merchant_wallet: string;
+  provider_name: string | null;
+  provider_x_url: string | null;
+  course_url: string | null;
   price_yd: string;
   lesson_count: number;
   rating: string;
   student_count: number;
   status: CourseSummary["status"];
   cover_tone: CourseSummary["coverTone"];
+}
+
+interface SectionRow {
+  id: string;
+  position: number;
+  title: string;
+  original_title: string | null;
+  url: string | null;
+  duration_seconds: number | null;
 }
 
 export class PostgresCourseRepository implements CourseRepository {
@@ -40,8 +53,12 @@ export class PostgresCourseRepository implements CourseRepository {
         c.category,
         c.level,
         teacher.display_name AS teacher_name,
+        c.teacher_x_url,
         teacher.wallet_address AS teacher_wallet,
         merchant.wallet_address AS merchant_wallet,
+        c.provider_name,
+        c.provider_x_url,
+        c.course_url,
         c.price_yd,
         (SELECT count(*)::int FROM course_sections s WHERE s.course_id = c.id) AS lesson_count,
         c.rating,
@@ -57,7 +74,7 @@ export class PostgresCourseRepository implements CourseRepository {
     return rows.map(mapCourseRow);
   }
 
-  async findPublishedBySlug(slug: string): Promise<CourseSummary | null> {
+  async findPublishedDetailBySlug(slug: string): Promise<CourseDetail | null> {
     const rows = await this.sql<CourseRow[]>`
       SELECT
         c.id,
@@ -68,8 +85,12 @@ export class PostgresCourseRepository implements CourseRepository {
         c.category,
         c.level,
         teacher.display_name AS teacher_name,
+        c.teacher_x_url,
         teacher.wallet_address AS teacher_wallet,
         merchant.wallet_address AS merchant_wallet,
+        c.provider_name,
+        c.provider_x_url,
+        c.course_url,
         c.price_yd,
         (SELECT count(*)::int FROM course_sections s WHERE s.course_id = c.id) AS lesson_count,
         c.rating,
@@ -82,7 +103,24 @@ export class PostgresCourseRepository implements CourseRepository {
       WHERE c.slug = ${slug} AND c.status = 'published'
       LIMIT 1
     `;
-    return rows[0] ? mapCourseRow(rows[0]) : null;
+    const row = rows[0];
+    if (!row) {
+      return null;
+    }
+
+    const sectionRows = await this.sql<SectionRow[]>`
+      SELECT
+        s.id,
+        s.position,
+        s.title,
+        s.original_title,
+        COALESCE(s.external_url, s.video_url) AS url,
+        s.duration_seconds
+      FROM course_sections s
+      WHERE s.course_id = ${row.id}
+      ORDER BY s.position ASC
+    `;
+    return { ...mapCourseRow(row), sections: sectionRows.map(mapSectionRow) };
   }
 }
 
@@ -96,13 +134,42 @@ function mapCourseRow(row: CourseRow): CourseSummary {
     category: row.category,
     level: row.level,
     teacherName: row.teacher_name,
+    teacherXHandle: toXHandle(row.teacher_x_url),
+    teacherXUrl: row.teacher_x_url,
     teacherWallet: row.teacher_wallet,
     merchantWallet: row.merchant_wallet,
+    providerName: row.provider_name,
+    providerXUrl: row.provider_x_url,
+    courseUrl: row.course_url,
     priceYD: row.price_yd,
     lessonCount: row.lesson_count,
     rating: Number(row.rating),
     studentCount: row.student_count,
     status: row.status,
     coverTone: row.cover_tone,
+  };
+}
+
+/** 002 迁移只存了 X 链接，handle 由链接首段路径推导 */
+function toXHandle(xUrl: string | null): string | null {
+  if (!xUrl) {
+    return null;
+  }
+  try {
+    const [handle] = new URL(xUrl).pathname.split("/").filter(Boolean);
+    return handle ? `@${handle}` : null;
+  } catch {
+    return null;
+  }
+}
+
+function mapSectionRow(row: SectionRow): CourseSection {
+  return {
+    id: row.id,
+    position: row.position,
+    title: row.title,
+    originalTitle: row.original_title,
+    url: row.url,
+    durationSeconds: row.duration_seconds,
   };
 }
