@@ -2,7 +2,6 @@ export interface CourseSection {
   position: number;
   title: string;
   originalTitle: string;
-  url: string;
   durationSeconds?: number;
 }
 
@@ -42,21 +41,21 @@ export const courses: Course[] = [
     providerName: "Cyfrin Updraft",
     providerXUrl: "https://x.com/CyfrinUpdraft",
     sections: [
-      { position: 1, title: "课程导论", originalTitle: "Introduction", url: "https://updraft.cyfrin.io/courses/solidity/simple-storage/introduction", durationSeconds: 180 },
-      { position: 2, title: "编写你的第一个合约", originalTitle: "Setting Up Your First Contract", url: "https://updraft.cyfrin.io/courses/solidity/simple-storage/create-solidity-smart-contract", durationSeconds: 600 },
-      { position: 3, title: "基础变量类型", originalTitle: "Basic Variable Types", url: "https://updraft.cyfrin.io/courses/solidity/simple-storage/solidity-basic-types", durationSeconds: 480 },
-      { position: 4, title: "函数", originalTitle: "Functions", url: "https://updraft.cyfrin.io/courses/solidity/simple-storage/solidity-functions", durationSeconds: 1140 },
-      { position: 5, title: "数组与结构体", originalTitle: "Arrays and Structs", url: "https://updraft.cyfrin.io/courses/solidity/simple-storage/solidity-arrays-and-structs", durationSeconds: 720 },
-      { position: 6, title: "错误与警告", originalTitle: "Errors and Warnings", url: "https://updraft.cyfrin.io/courses/solidity/simple-storage/solidity-errors-and-warnings", durationSeconds: 300 },
-      { position: 7, title: "memory、storage 与 calldata", originalTitle: "Memory Storage and Calldata", url: "https://updraft.cyfrin.io/courses/solidity/simple-storage/solidity-memory-storage-calldata", durationSeconds: 360 },
-      { position: 8, title: "映射 Mapping", originalTitle: "Mappings", url: "https://updraft.cyfrin.io/courses/solidity/simple-storage/solidity-mappings", durationSeconds: 240 },
-      { position: 9, title: "部署你的第一个合约", originalTitle: "Deploying Your First Contract", url: "https://updraft.cyfrin.io/courses/solidity/simple-storage/deploying-solidity-smart-contract", durationSeconds: 600 },
-      { position: 10, title: "本章回顾", originalTitle: "Section Recap", url: "https://updraft.cyfrin.io/courses/solidity/simple-storage/evm-recap", durationSeconds: 180 },
-      { position: 11, title: "合约工厂入门", originalTitle: "Storage Factory Introduction", url: "https://updraft.cyfrin.io/courses/solidity/storage-factory/factory-introduction", durationSeconds: 180 },
-      { position: 12, title: "用合约部署合约", originalTitle: "Deploying a Contract From a Contract", url: "https://updraft.cyfrin.io/courses/solidity/storage-factory/deploying-a-contract-from-a-contract" },
-      { position: 13, title: "Solidity 导入机制", originalTitle: "Solidity Imports", url: "https://updraft.cyfrin.io/courses/solidity/storage-factory/solidity-imports" },
-      { position: 14, title: "通过 ABI 与合约交互", originalTitle: "Interacting With Contracts ABI", url: "https://updraft.cyfrin.io/courses/solidity/storage-factory/interacting-with-smart-contracts-abi" },
-      { position: 15, title: "Solidity 继承", originalTitle: "Inheritance in Solidity", url: "https://updraft.cyfrin.io/courses/solidity/storage-factory/inheritance-in-solidity-smart-contracts" },
+      { position: 1, title: "课程导论", originalTitle: "Introduction", durationSeconds: 180 },
+      { position: 2, title: "编写你的第一个合约", originalTitle: "Setting Up Your First Contract", durationSeconds: 600 },
+      { position: 3, title: "基础变量类型", originalTitle: "Basic Variable Types", durationSeconds: 480 },
+      { position: 4, title: "函数", originalTitle: "Functions", durationSeconds: 1140 },
+      { position: 5, title: "数组与结构体", originalTitle: "Arrays and Structs", durationSeconds: 720 },
+      { position: 6, title: "错误与警告", originalTitle: "Errors and Warnings", durationSeconds: 300 },
+      { position: 7, title: "memory、storage 与 calldata", originalTitle: "Memory Storage and Calldata", durationSeconds: 360 },
+      { position: 8, title: "映射 Mapping", originalTitle: "Mappings", durationSeconds: 240 },
+      { position: 9, title: "部署你的第一个合约", originalTitle: "Deploying Your First Contract", durationSeconds: 600 },
+      { position: 10, title: "本章回顾", originalTitle: "Section Recap", durationSeconds: 180 },
+      { position: 11, title: "合约工厂入门", originalTitle: "Storage Factory Introduction", durationSeconds: 180 },
+      { position: 12, title: "用合约部署合约", originalTitle: "Deploying a Contract From a Contract" },
+      { position: 13, title: "Solidity 导入机制", originalTitle: "Solidity Imports" },
+      { position: 14, title: "通过 ABI 与合约交互", originalTitle: "Interacting With Contracts ABI" },
+      { position: 15, title: "Solidity 继承", originalTitle: "Inheritance in Solidity" },
     ],
     priceYD: 4,
     lessonCount: 15,
@@ -78,20 +77,20 @@ export const courses: Course[] = [
     providerName: "Cyfrin Updraft",
     providerXUrl: "https://x.com/CyfrinUpdraft",
     sections: [
-      { position: 1, title: "课程总览：Uniswap V2 是什么", originalTitle: "Overview - Intro", url: "https://updraft.cyfrin.io/courses/uniswap-v2/overview/intro" },
-      { position: 2, title: "恒定乘积曲线图解", originalTitle: "Overview - Graph", url: "https://updraft.cyfrin.io/courses/uniswap-v2/overview/graph" },
-      { position: 3, title: "核心合约结构：Factory / Pair / Router", originalTitle: "Overview - Contracts", url: "https://updraft.cyfrin.io/courses/uniswap-v2/overview/contracts" },
-      { position: 4, title: "兑换数学推导", originalTitle: "Swap - Swap Math", url: "https://updraft.cyfrin.io/courses/uniswap-v2/swap/swap-math" },
-      { position: 5, title: "兑换手续费机制", originalTitle: "Swap - Swap Fee", url: "https://updraft.cyfrin.io/courses/uniswap-v2/swap/swap-fee" },
-      { position: 6, title: "现货价格的计算方式", originalTitle: "Swap - Spot Price Math", url: "https://updraft.cyfrin.io/courses/uniswap-v2/swap/spot-price-math" },
-      { position: 7, title: "滑点与价格影响", originalTitle: "Swap - Slippage", url: "https://updraft.cyfrin.io/courses/uniswap-v2/swap/slippage" },
-      { position: 8, title: "源码走读：createPair 创建交易对", originalTitle: "Create Pool - Code Walk Create Pair", url: "https://updraft.cyfrin.io/courses/uniswap-v2/create-pool/code-walk-create-pair" },
-      { position: 9, title: "LP 份额（Pool Shares）入门", originalTitle: "Add Liquidity - Pool Shares Intro", url: "https://updraft.cyfrin.io/courses/uniswap-v2/add-liquidity/pool-shares-intro" },
-      { position: 10, title: "添加流动性的数学原理", originalTitle: "Add Liquidity - Add Liq Math", url: "https://updraft.cyfrin.io/courses/uniswap-v2/add-liquidity/add-liq-math" },
-      { position: 11, title: "移除流动性数学：dx 与 dy 的求解", originalTitle: "Remove Liquidity - Remove Liq Math Dx Dy", url: "https://updraft.cyfrin.io/courses/uniswap-v2/remove-liquidity/remove-liq-math-dx-dy" },
-      { position: 12, title: "闪电兑换（Flash Swap）数学", originalTitle: "Flash Swap - Flash Swap Math", url: "https://updraft.cyfrin.io/courses/uniswap-v2/flash-swap/flash-swap-math" },
-      { position: 13, title: "TWAP 与现货价格预言机", originalTitle: "Twap - Twap Spot Price Oracle", url: "https://updraft.cyfrin.io/courses/uniswap-v2/twap/twap-spot-price-oracle" },
-      { position: 14, title: "实战应用：套利（Arbitrage）入门", originalTitle: "App - Arb Intro", url: "https://updraft.cyfrin.io/courses/uniswap-v2/app/arb-intro" },
+      { position: 1, title: "课程总览：Uniswap V2 是什么", originalTitle: "Overview - Intro" },
+      { position: 2, title: "恒定乘积曲线图解", originalTitle: "Overview - Graph" },
+      { position: 3, title: "核心合约结构：Factory / Pair / Router", originalTitle: "Overview - Contracts" },
+      { position: 4, title: "兑换数学推导", originalTitle: "Swap - Swap Math" },
+      { position: 5, title: "兑换手续费机制", originalTitle: "Swap - Swap Fee" },
+      { position: 6, title: "现货价格的计算方式", originalTitle: "Swap - Spot Price Math" },
+      { position: 7, title: "滑点与价格影响", originalTitle: "Swap - Slippage" },
+      { position: 8, title: "源码走读：createPair 创建交易对", originalTitle: "Create Pool - Code Walk Create Pair" },
+      { position: 9, title: "LP 份额（Pool Shares）入门", originalTitle: "Add Liquidity - Pool Shares Intro" },
+      { position: 10, title: "添加流动性的数学原理", originalTitle: "Add Liquidity - Add Liq Math" },
+      { position: 11, title: "移除流动性数学：dx 与 dy 的求解", originalTitle: "Remove Liquidity - Remove Liq Math Dx Dy" },
+      { position: 12, title: "闪电兑换（Flash Swap）数学", originalTitle: "Flash Swap - Flash Swap Math" },
+      { position: 13, title: "TWAP 与现货价格预言机", originalTitle: "Twap - Twap Spot Price Oracle" },
+      { position: 14, title: "实战应用：套利（Arbitrage）入门", originalTitle: "App - Arb Intro" },
     ],
     priceYD: 4,
     lessonCount: 14,
@@ -113,15 +112,15 @@ export const courses: Course[] = [
     providerName: "Cyfrin Updraft",
     providerXUrl: "https://x.com/CyfrinUpdraft",
     sections: [
-      { position: 1, title: "课程导论：走进智能合约安全", originalTitle: "Course Introduction", url: "https://updraft.cyfrin.io/courses/security/smart-contract-security-introduction/welcome-smart-contracts-security", durationSeconds: 3600 },
-      { position: 2, title: "基础回顾：Solidity 与测试预备知识", originalTitle: "Review", url: "https://updraft.cyfrin.io/courses/security/review/solidity-requisites", durationSeconds: 3600 },
-      { position: 3, title: "什么是智能合约审计", originalTitle: "What is a smart contract audit", url: "https://updraft.cyfrin.io/courses/security/audit/tools", durationSeconds: 3600 },
-      { position: 4, title: "第一次审计实战：PasswordStore", originalTitle: "Your First Audit | PasswordStore", url: "https://updraft.cyfrin.io/courses/security/first-audit/first-review", durationSeconds: 7200 },
-      { position: 5, title: "Puppy Raffle 审计：重入与拒绝服务", originalTitle: "Puppy raffle", url: "https://updraft.cyfrin.io/courses/security/puppy-raffle/puppy-raffle-primer", durationSeconds: 18000 },
-      { position: 6, title: "TSwap 审计：AMM 不变量与模糊测试", originalTitle: "TSwap", url: "https://updraft.cyfrin.io/courses/security/tswap/introduction", durationSeconds: 18000 },
-      { position: 7, title: "Thunder Loan 审计：闪电贷与预言机操纵", originalTitle: "Thunder Loan", url: "https://updraft.cyfrin.io/courses/security/thunder-loan/introduction", durationSeconds: 14400 },
-      { position: 8, title: "Boss Bridge 审计：跨链桥安全", originalTitle: "Boss Bridge", url: "https://updraft.cyfrin.io/courses/security/bridges/phase-1-scoping", durationSeconds: 7200 },
-      { position: 9, title: "MEV 与治理攻击", originalTitle: "MEV & Governance", url: "https://updraft.cyfrin.io/courses/security/mev-and-governance/mev-introduction", durationSeconds: 3600 },
+      { position: 1, title: "课程导论：走进智能合约安全", originalTitle: "Course Introduction", durationSeconds: 3600 },
+      { position: 2, title: "基础回顾：Solidity 与测试预备知识", originalTitle: "Review", durationSeconds: 3600 },
+      { position: 3, title: "什么是智能合约审计", originalTitle: "What is a smart contract audit", durationSeconds: 3600 },
+      { position: 4, title: "第一次审计实战：PasswordStore", originalTitle: "Your First Audit | PasswordStore", durationSeconds: 7200 },
+      { position: 5, title: "Puppy Raffle 审计：重入与拒绝服务", originalTitle: "Puppy raffle", durationSeconds: 18000 },
+      { position: 6, title: "TSwap 审计：AMM 不变量与模糊测试", originalTitle: "TSwap", durationSeconds: 18000 },
+      { position: 7, title: "Thunder Loan 审计：闪电贷与预言机操纵", originalTitle: "Thunder Loan", durationSeconds: 14400 },
+      { position: 8, title: "Boss Bridge 审计：跨链桥安全", originalTitle: "Boss Bridge", durationSeconds: 7200 },
+      { position: 9, title: "MEV 与治理攻击", originalTitle: "MEV & Governance", durationSeconds: 3600 },
     ],
     priceYD: 4,
     lessonCount: 9,
@@ -135,7 +134,7 @@ export function findCourseBySlug(slug?: string): Course | undefined {
   return courses.find((item) => item.slug === slug) ?? courses[0];
 }
 
-export function formatDuration(seconds?: number) {
+export function formatDuration(seconds?: number | null) {
   if (!seconds) return "";
   const minutes = Math.round(seconds / 60);
   return minutes >= 60 ? `${Math.round(minutes / 6) / 10} 小时` : `${minutes} 分钟`;

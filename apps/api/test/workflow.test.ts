@@ -421,6 +421,23 @@ describe("课程上架流转", () => {
     await app.close();
   });
 
+  it("建课时传 sections[].url 会被拒绝", async () => {
+    const app = await buildTestApp();
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/teacher/courses",
+      headers: { authorization: TEACHER },
+      payload: {
+        ...draft("legacy-url-course"),
+        sections: [{ title: "环境准备", url: "https://example.com/lesson-1" }],
+      },
+    });
+
+    assert.equal(response.statusCode, 400);
+    assert.equal(response.json().error, "INVALID_REQUEST");
+    await app.close();
+  });
+
   it("教师只能看到并提交自己的课程", async () => {
     const app = await buildTestApp();
     const mine = await app.inject({

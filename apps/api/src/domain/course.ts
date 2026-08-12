@@ -5,7 +5,6 @@ export interface CourseSection {
   position: number;
   title: string;
   originalTitle: string | null;
-  url: string | null;
   durationSeconds: number | null;
 }
 

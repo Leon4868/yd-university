@@ -58,7 +58,6 @@ describe("YD University API", () => {
       position: 1,
       title: "课程导论",
       originalTitle: "Introduction",
-      url: "https://updraft.cyfrin.io/courses/solidity/simple-storage/introduction",
       durationSeconds: 180,
     });
     await app.close();

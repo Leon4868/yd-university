@@ -41,7 +41,6 @@ export interface CreatorApplicationInput {
 export interface CourseSectionInput {
   title: string;
   originalTitle?: string;
-  url?: string;
   durationSeconds?: number;
 }
 
@@ -79,12 +78,12 @@ export interface ManagedCourse {
   createdAt?: string | null;
 }
 
+/** v0.3 起小节不再有视频或外链，durationSeconds 是预计学习时长 */
 export interface PublicCourseSection {
   id: string;
   position: number;
   title: string;
   originalTitle: string | null;
-  url: string | null;
   durationSeconds: number | null;
 }
 
@@ -114,4 +113,16 @@ export interface PublicCourseSummary {
 
 export interface PublicCourseDetail extends PublicCourseSummary {
   sections: PublicCourseSection[];
+}
+
+/** 学习进度以服务端为准，前端不再本地估算 */
+export interface CourseProgress {
+  courseId: string;
+  slug: string;
+  totalSections: number;
+  completedSectionIds: string[];
+  completedCount: number;
+  percent: number;
+  completed: boolean;
+  completedAt: string | null;
 }

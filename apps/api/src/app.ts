@@ -10,6 +10,7 @@ import { registerAdminCourseRoutes } from "./routes/admin-courses.js";
 import { registerAdminCreatorRoutes } from "./routes/admin-creators.js";
 import { registerCourseRoutes } from "./routes/courses.js";
 import { registerCreatorRoutes } from "./routes/creators.js";
+import { registerLearningRoutes } from "./routes/learning.js";
 import { registerMeRoutes } from "./routes/me.js";
 import { registerTeacherCourseRoutes } from "./routes/teacher-courses.js";
 
@@ -31,7 +32,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
 
   await app.register(cors, {
     origin: ["http://localhost:5173"],
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   });
 
@@ -48,6 +49,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await registerAdminCreatorRoutes(app, guards, repositories.creators);
   await registerAdminCourseRoutes(app, guards, repositories.adminCourses);
   await registerTeacherCourseRoutes(app, guards, repositories.creators, repositories.teacherCourses);
+  await registerLearningRoutes(app, guards, repositories.courses, repositories.progress);
 
   app.setNotFoundHandler((_request, reply) => fail(reply, 404, "NOT_FOUND", "接口不存在"));
 

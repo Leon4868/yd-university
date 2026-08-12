@@ -1,6 +1,7 @@
 import type {
   AdminCreatorApplication,
   CourseDraftInput,
+  CourseProgress,
   CourseStatus,
   CreatorApplication,
   CreatorApplicationInput,
@@ -159,4 +160,17 @@ export function listPublishedCourses(signal?: AbortSignal) {
 
 export function getPublishedCourse(slug: string, signal?: AbortSignal) {
   return request<PublicCourseDetail>("GET", `/api/courses/${slug}`, { signal });
+}
+
+// 学习进度：小节没有视频，点击完成即视为学完，进度落库
+export function getCourseProgress(token: string, slug: string, signal?: AbortSignal) {
+  return request<CourseProgress>("GET", `/api/learning/courses/${slug}/progress`, { token, signal });
+}
+
+export function completeCourseSection(token: string, slug: string, sectionId: string) {
+  return request<CourseProgress>("POST", `/api/learning/courses/${slug}/sections/${sectionId}/complete`, { token });
+}
+
+export function uncompleteCourseSection(token: string, slug: string, sectionId: string) {
+  return request<CourseProgress>("DELETE", `/api/learning/courses/${slug}/sections/${sectionId}/complete`, { token });
 }

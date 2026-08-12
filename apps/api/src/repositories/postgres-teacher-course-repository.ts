@@ -52,12 +52,11 @@ export class PostgresTeacherCourseRepository implements TeacherCourseRepository 
         for (const [index, section] of sections.entries()) {
           await tx`
             INSERT INTO course_sections (
-              course_id, title, original_title, external_url, position, duration_seconds
+              course_id, title, original_title, position, duration_seconds
             ) VALUES (
               ${row.id},
               ${section.title},
               ${section.originalTitle ?? null},
-              ${section.url ?? null},
               ${index + 1},
               ${section.durationSeconds ?? 0}
             )

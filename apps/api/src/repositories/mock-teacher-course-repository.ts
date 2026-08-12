@@ -37,7 +37,6 @@ export class MockTeacherCourseRepository implements TeacherCourseRepository {
       position: index + 1,
       title: section.title,
       originalTitle: section.originalTitle ?? null,
-      url: section.url ?? null,
       durationSeconds: section.durationSeconds ?? null,
     }));
     const created: CourseRecord = {

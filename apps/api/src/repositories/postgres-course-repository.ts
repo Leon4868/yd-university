@@ -32,7 +32,6 @@ interface SectionRow {
   position: number;
   title: string;
   original_title: string | null;
-  url: string | null;
   duration_seconds: number | null;
 }
 
@@ -115,7 +114,6 @@ export class PostgresCourseRepository implements CourseRepository {
         s.position,
         s.title,
         s.original_title,
-        COALESCE(s.external_url, s.video_url) AS url,
         s.duration_seconds
       FROM course_sections s
       WHERE s.course_id = ${row.id}
@@ -157,7 +155,6 @@ function mapSectionRow(row: SectionRow): CourseSection {
     position: row.position,
     title: row.title,
     originalTitle: row.original_title,
-    url: row.url,
     durationSeconds: row.duration_seconds,
   };
 }

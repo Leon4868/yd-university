@@ -150,7 +150,7 @@ code 为 `COURSE_NOT_FOUND`（404）与 `INVALID_COURSE_SLUG`（400），不在�
 | `coverTone?` | `violet` \| `blue` \| `teal` |
 | `courseUrl?` | `http(s)://` 开头，≤2000 |
 | `providerName?` | 1..60 |
-| `sections?` | ≤200 项，每项 `{ title(1..160), originalTitle?(1..160), url?(http(s)), durationSeconds?(0..86400) }` |
+| `sections?` | ≤200 项，每项 `{ title(1..160), originalTitle?(1..160), durationSeconds?(0..86400) }`；不接受章节视频或外链字段 |
 
 创建后 `status='draft'`，归属为当前用户已通过审核的 `creators.id`。`slug` 重复 → 409。
 提交审核：仅允许 `draft` → `review`，写 `submitted_at`，清空上轮 `rejection_reason`；其它状态 → 409。
@@ -164,3 +164,43 @@ code 为 `COURSE_NOT_FOUND`（404）与 `INVALID_COURSE_SLUG`（400），不在�
 | --- | --- | --- | --- |
 | GET | `/api/courses` | 公开 | 只返回 `published` |
 | GET | `/api/courses/:slug` | 公开 | 只返回 `published`，含 sections |
+
+### 学习进度
+
+课程小节不再承载视频或外部链接，**学员点击「完成本节」即视为学完该节**，进度落库。
+
+| 方法 | 路径 | 权限 | 说明 |
+| --- | --- | --- | --- |
+| GET | `/api/learning/courses/:slug/progress` | 已登录 | 我在该课程的进度 |
+| POST | `/api/learning/courses/:slug/sections/:sectionId/complete` | 已登录 | 标记完成，幂等 |
+| DELETE | `/api/learning/courses/:slug/sections/:sectionId/complete` | 已登录 | 取消完成，幂等 |
+
+三者响应同形 `CourseProgress`：
+
+```
+{
+  courseId, slug,
+  totalSections: number,
+  completedSectionIds: string[],
+  completedCount: number,
+  percent: number,          // 向下取整的百分比，0..100
+  completed: boolean,       // percent === 100 且 totalSections > 0
+  completedAt: string|null  // 首次达到 100% 的时间，回退后不清空
+}
+```
+
+- 只对 `status='published'` 的课程开放，其它一律 404 `NOT_FOUND`。
+- `sectionId` 必须属于该课程，否则 404；非 uuid → 400。
+- 完成写入 `lesson_progress(user_id, section_id, completed_at)`，主键冲突时更新，保证幂等。
+- `totalSections = 0` 的课程 `percent` 记 0、`completed` 为 false，避免空课程被判定完成。
+- 达到 100% 后，完成记录进入 Chainlink CRE 的完成报告流程；CRE 消费唯一报告后调用 `CompletionReceiver`，由证书合约铸造不可转让证书。
+
+### 小节字段变更（v0.3）
+
+`CourseSection` 移除 `url`：不再有视频地址或原课程外链。保留 `title`、`originalTitle`、`durationSeconds`
+（`durationSeconds` 语义改为「预计学习时长」，与视频无关）。
+`POST /api/teacher/courses` 的 `sections[]` 同步移除 `url` 字段，传了会被 zod 拒绝。
+
+课程级的 `courseUrl`、`providerName`、`teacherXUrl` / `teacherXHandle` / `providerXUrl` 继续保留，用于展示课程来源与讲师/平台信息。
+只有章节级的视频/原课程外链被移除；学生在平台内点击“完成本节”即可记录该章节学习完成。
+`POST /api/teacher/courses` 的 `courseUrl` 仍可作为课程来源链接传入，`sections[]` 不再接受 `url` 字段。

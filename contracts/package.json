@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "oxlint test ignition hardhat.config.ts",
     "deploy:local": "hardhat ignition deploy ignition/modules/YDUniversity.ts",
-    "deploy:sepolia": "hardhat ignition deploy --network sepolia ignition/modules/YDUniversity.ts"
+    "deploy:sepolia": "hardhat ignition deploy --network sepolia --parameters ignition/parameters.sepolia.json ignition/modules/YDUniversity.ts"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0"

@@ -4,15 +4,18 @@ import type { AppEnv } from "../env.js";
 import type { AdminCourseRepository } from "./admin-course-repository.js";
 import type { CourseRepository } from "./course-repository.js";
 import type { CreatorRepository } from "./creator-repository.js";
+import type { ProgressRepository } from "./progress-repository.js";
 import { MockAdminCourseRepository } from "./mock-admin-course-repository.js";
 import { MockCourseRepository } from "./mock-course-repository.js";
 import { MockCreatorRepository } from "./mock-creator-repository.js";
 import { MockDataStore } from "./mock-store.js";
+import { MockProgressRepository } from "./mock-progress-repository.js";
 import { MockTeacherCourseRepository } from "./mock-teacher-course-repository.js";
 import { MockUserRepository } from "./mock-user-repository.js";
 import { PostgresAdminCourseRepository } from "./postgres-admin-course-repository.js";
 import { PostgresCourseRepository } from "./postgres-course-repository.js";
 import { PostgresCreatorRepository } from "./postgres-creator-repository.js";
+import { PostgresProgressRepository } from "./postgres-progress-repository.js";
 import { PostgresTeacherCourseRepository } from "./postgres-teacher-course-repository.js";
 import { PostgresUserRepository } from "./postgres-user-repository.js";
 import type { TeacherCourseRepository } from "./teacher-course-repository.js";
@@ -24,6 +27,7 @@ export interface Repositories {
   creators: CreatorRepository;
   adminCourses: AdminCourseRepository;
   teacherCourses: TeacherCourseRepository;
+  progress: ProgressRepository;
 }
 
 export function createMockRepositories(store: MockDataStore = new MockDataStore()): Repositories {
@@ -33,6 +37,7 @@ export function createMockRepositories(store: MockDataStore = new MockDataStore(
     creators: new MockCreatorRepository(store),
     adminCourses: new MockAdminCourseRepository(store),
     teacherCourses: new MockTeacherCourseRepository(store),
+    progress: new MockProgressRepository(store),
   };
 }
 
@@ -51,5 +56,6 @@ export function createRepositories(env: AppEnv): Repositories {
     creators: new PostgresCreatorRepository(sql),
     adminCourses: new PostgresAdminCourseRepository(sql),
     teacherCourses: new PostgresTeacherCourseRepository(sql),
+    progress: new PostgresProgressRepository(sql),
   };
 }

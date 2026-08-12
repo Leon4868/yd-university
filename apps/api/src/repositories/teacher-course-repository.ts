@@ -3,7 +3,6 @@ import type { CourseLevel, CourseSummary, ManagedCourse } from "../domain/course
 export interface CourseSectionInput {
   title: string;
   originalTitle?: string;
-  url?: string;
   durationSeconds?: number;
 }
 

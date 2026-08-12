@@ -8,10 +8,10 @@ import type { CreatorRepository } from "../repositories/creator-repository.js";
 import type { TeacherCourseRepository } from "../repositories/teacher-course-repository.js";
 import { httpUrlSchema, idParamsSchema } from "./schemas.js";
 
-const sectionSchema = z.object({
+// 小节不再有视频或外链，strict 让残留的 url 字段直接被拒
+const sectionSchema = z.strictObject({
   title: z.string().trim().min(1).max(160),
   originalTitle: z.string().trim().min(1).max(160).optional(),
-  url: httpUrlSchema.optional(),
   durationSeconds: z.coerce.number().int().min(0).max(86_400).optional(),
 });
 

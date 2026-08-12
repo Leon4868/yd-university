@@ -83,11 +83,14 @@ flowchart TD
 | --- | --- |
 | 管理员 `ADMIN` | `0x934124d582dd6618309b0905b4DE2631A2892EEe` |
 | 平台收款 `PLATFORM_TREASURY` | `0x934124d582dd6618309b0905b4DE2631A2892EEe`（与管理员同一地址） |
+| CRE forwarder `CRE_FORWARDER` | `0x934124d582dd6618309b0905b4DE2631A2892EEe`（CRE 未接入前临时与管理员同一地址） |
 | 商家 `MERCHANT` | `0x283A754de403b0Ee48560964f9f7C21491916499` |
 | 教师 `TEACHER` | `0xe1E5016aF35DfD90ccb6Bc03654D156b3f29764D` |
 
-写入位置：`contracts/ignition/parameters.sepolia.json`（`admin` / `platformTreasury` / `defaultTeacher` / `defaultMerchant`），
-其中 `admin` 与 `platformTreasury` 同时作为 `contracts/ignition/modules/YDUniversity.ts` 的参数默认值；
+写入位置：`contracts/ignition/parameters.sepolia.json`（`admin` / `platformTreasury` / `creForwarder` /
+`defaultTeacher` / `defaultMerchant`）。本地部署不传参数时默认使用 Hardhat 本地默认签名人做
+admin/platform/forwarder；Sepolia 部署时必须使用参数文件，且 `SEPOLIA_PRIVATE_KEY` 对应的钱包必须等于
+`admin`，否则 `CourseCertificate.grantRole` 无法由 admin 签名；
 演示课程的教师钱包与商家钱包写在 `apps/api/src/repositories/mock-data.ts` 顶部常量。
 
 **本仓库不含任何私钥。** 上述四个地址都是可公开的 Sepolia 地址。部署所需的
@@ -97,8 +100,8 @@ flowchart TD
 ## 课程内容来源
 
 三门演示课程的正文全部来自公开免费学习平台 **Cyfrin Updraft**（<https://updraft.cyfrin.io>），
-课程页明确标注免费（`isFree = true`）。本仓库只保存课程标题、简介、小节标题与指向原站的外链，
-不复制、不转存、不代播任何视频或讲义正文；前端小节列表点击后跳转到原课程页面学习。
+课程页明确标注免费（`isFree = true`）。本仓库保存课程标题、简介、小节标题，以及课程级来源链接，
+不复制、不转存、不代播任何视频或讲义正文；学生在平台内完成章节后由系统记录学习进度，不再跳转到章节视频页面。
 
 | slug | 课程 | 讲师 | 小节数 | 原课程链接 |
 | --- | --- | --- | --- | --- |
@@ -125,7 +128,7 @@ flowchart TD
 - 教师申请与审核留痕：`review_status`、`reviewed_by`、`reviewed_at`、`rejection_reason`。
 - 课程审核留痕：`submitted_at`、`reviewed_by`、`reviewed_at`、`rejection_reason`。
 - 课程正文、封面、章节、评论和审核资料；外部来源课程另存 `course_url`、`provider_name`、`teacher_x_url`，
-  小节存 `external_url` 与 `provider`。
+  章节不存视频或原课程外链，只存标题、原始标题和预计学习时长。
 - 每节课的完成状态和聚合进度。
 - 链上事件索引副本和同步游标。
 

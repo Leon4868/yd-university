@@ -114,11 +114,12 @@ mock 模式下五个仓储共用一个 `MockDataStore`（users / creators / cour
 
 ## 外部来源课程
 
-演示课程的正文托管在第三方免费平台，库内只存元信息与外链：
-`courses.course_url / provider_name / teacher_x_url`，`course_sections.external_url / provider`。
+演示课程的正文来源于第三方免费平台，库内保留课程级元信息与来源链接：
+`courses.course_url / provider_name / teacher_x_url`，以及平台来源字段。
+章节不再保存视频或原课程外链，学生在平台内点击完成按钮记录学习进度。
 API 的 `CourseSummary` 用于列表，`CourseDetail` 额外带一份按 `position` 升序的 `sections`。
 `courses.provider_x_url` 与 `course_sections.original_title` 由 002 补齐，postgres 模式下正常读写；
-教师新建课程时接口不收 `providerXUrl`，这类课程该字段为 `null`。
+教师新建课程时接口不收 `providerXUrl`，这类课程该字段为 `null`；章节不保存视频或原课程外链。
 
 ## 课程 ID 映射
 

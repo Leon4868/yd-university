@@ -18,11 +18,20 @@ export interface MockStoreSeed {
   courses?: CourseDetail[];
 }
 
-/** mock 三张表的共享内存态，各仓储读写同一份数据以支撑完整审核流转 */
+/** 对应 001 的 lesson_progress，取消完成只清 completedAt，createdAt 即首次完成时间 */
+export interface LessonProgressRecord {
+  userId: string;
+  sectionId: string;
+  completedAt: string | null;
+  createdAt: string;
+}
+
+/** mock 各表的共享内存态，各仓储读写同一份数据以支撑完整审核流转 */
 export class MockDataStore {
   readonly users: User[];
   readonly creators: CreatorApplication[];
   readonly courses: CourseRecord[];
+  readonly lessonProgress: LessonProgressRecord[] = [];
 
   constructor(seed: MockStoreSeed = {}) {
     this.users = (seed.users ?? demoUsers).map((user) => ({ ...user }));

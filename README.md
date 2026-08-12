@@ -183,10 +183,16 @@ mock 模式的数据只在进程内存里，重启 API 即回到初始状态。
 | --- | --- | --- |
 | `admin` | `0x934124d582dd6618309b0905b4DE2631A2892EEe` | 管理员，各合约 AccessControl 的 admin |
 | `platformTreasury` | `0x934124d582dd6618309b0905b4DE2631A2892EEe` | 平台收款（与管理员同一地址） |
+| `creForwarder` | `0x934124d582dd6618309b0905b4DE2631A2892EEe` | Chainlink CRE forwarder；未接入 CRE 前临时指向管理员，之后用 `setForwarder` 替换 |
 | `defaultTeacher` | `0xe1E5016aF35DfD90ccb6Bc03654D156b3f29764D` | 演示教师钱包，当前只供后续建课脚本取用 |
 | `defaultMerchant` | `0x283A754de403b0Ee48560964f9f7C21491916499` | 演示商家钱包，同上 |
 
-`YDUniversity.ts` 只消费 `admin` 与 `platformTreasury`，且两者已带默认值，因此本地部署不传参数文件也能跑。
+`YDUniversity.ts` 消费 `admin`、`platformTreasury` 与 `creForwarder`。本地部署不传参数时默认使用 Hardhat
+本地默认签名人做 admin/platform/forwarder；Sepolia 部署必须使用参数文件，并保证 `SEPOLIA_PRIVATE_KEY`
+对应的钱包就是 `admin`，否则
+`CourseCertificate.grantRole` 授权交易无法由 admin 签名。模块会部署
+`YDToken`、`CourseRegistry`、`CourseMarket`、`CourseCertificate`、`CompletionReceiver`，
+并把 `CourseCertificate.MINTER_ROLE` 授给 `CompletionReceiver`。
 
 ### 3. 部署
 
@@ -195,23 +201,28 @@ mock 模式的数据只在进程内存里，重启 API 即回到初始状态。
 npm run deploy:local -w @yd/contracts
 
 # Sepolia，必须手动追加参数文件
-npx hardhat ignition deploy --network sepolia \
-  ignition/modules/YDUniversity.ts \
-  --parameters ignition/parameters.sepolia.json
+npm run deploy:sepolia -w @yd/contracts
 ```
 
-`contracts/package.json` 的 `deploy:sepolia` 脚本暂未内置 `--parameters`，跑 Sepolia 时请按上面的完整命令追加，
-否则会用模块默认地址部署。
+如果要部署后顺手在 Etherscan 验证，可在 `contracts/` 目录跑：
+
+```bash
+npx hardhat ignition deploy --network sepolia \
+  --parameters ignition/parameters.sepolia.json \
+  --verify \
+  ignition/modules/YDUniversity.ts
+```
 
 ### 4. 回填前端地址
 
-部署完成后把四个合约地址写入前端私有 `.env`（占位符见 `apps/web/.env.example`）：
+部署完成后把合约地址写入私有 `.env`（占位符见 `apps/web/.env.example`）：
 `VITE_CHAIN_ID=11155111`、`VITE_YD_TOKEN_ADDRESS`、`VITE_COURSE_REGISTRY_ADDRESS`、
-`VITE_COURSE_MARKET_ADDRESS`、`VITE_COURSE_CERTIFICATE_ADDRESS`。不要提交任何真实凭证。
+`VITE_COURSE_MARKET_ADDRESS`、`VITE_COURSE_CERTIFICATE_ADDRESS`。`CompletionReceiver`
+地址供后端/CRE 配置使用。不要提交任何真实凭证。
 
 ## 课程来源
 
-三门演示课程的正文来自公开免费平台 **Cyfrin Updraft**（<https://updraft.cyfrin.io>）：
+三门演示课程的正文来源于公开免费平台 **Cyfrin Updraft**（<https://updraft.cyfrin.io>），课程级来源链接会保留在课程信息中；章节不提供视频跳转，学生在平台内点击完成即可记录学习进度：
 
 - Solidity 智能合约开发从入门到实战 —— Patrick Collins，15 节，<https://updraft.cyfrin.io/courses/solidity>
 - DeFi 核心原理与协议拆解（Uniswap V2 源码精讲）—— Tasuku Nakamura，14 节，<https://updraft.cyfrin.io/courses/uniswap-v2>
