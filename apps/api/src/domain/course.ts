@@ -37,3 +37,25 @@ export interface CourseSummary {
 export interface CourseDetail extends CourseSummary {
   sections: CourseSection[];
 }
+
+/** 仓储内部持有的课程全量态，比公开视图多出归属与审核轨迹 */
+export interface CourseRecord extends CourseDetail {
+  teacherId: string;
+  merchantId: string;
+  submittedAt: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+}
+
+/** 管理端与教师端视图：公开字段之外附带审核轨迹 */
+export interface ManagedCourse extends CourseSummary {
+  teacherId: string;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+}
