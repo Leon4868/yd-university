@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { buildApp } from "../src/app.js";
-import { demoCourses, MockCourseRepository } from "../src/repositories/mock-course-repository.js";
+import { createMockRepositories } from "../src/repositories/create-repositories.js";
+import { demoCourses } from "../src/repositories/mock-data.js";
+import { MockDataStore } from "../src/repositories/mock-store.js";
 
 describe("YD University API", () => {
   it("reports health", async () => {
@@ -72,7 +74,9 @@ describe("YD University API", () => {
       status: "review" as const,
     };
     const app = await buildApp({
-      courseRepository: new MockCourseRepository([publishedCourse, pendingCourse]),
+      repositories: createMockRepositories(
+        new MockDataStore({ courses: [publishedCourse, pendingCourse] }),
+      ),
     });
 
     const listResponse = await app.inject({ method: "GET", url: "/api/courses" });

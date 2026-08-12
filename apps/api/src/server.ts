@@ -1,10 +1,15 @@
 import { buildApp } from "./app.js";
+import { createAuthVerifier } from "./auth/verifier.js";
 import { readEnv } from "./env.js";
-import { createCourseRepository } from "./repositories/create-course-repository.js";
+import { createRepositories } from "./repositories/create-repositories.js";
 
 const env = readEnv();
-const courseRepository = createCourseRepository(env);
-const app = await buildApp({ courseRepository, logger: true });
+const repositories = createRepositories(env);
+const authVerifier = createAuthVerifier(env);
+const bootstrapAdminSubjects = env.BOOTSTRAP_ADMIN_SUBJECTS.split(",")
+  .map((subject) => subject.trim())
+  .filter(Boolean);
+const app = await buildApp({ repositories, authVerifier, bootstrapAdminSubjects, logger: true });
 
 try {
   await app.listen({ host: env.HOST, port: env.PORT });

@@ -49,6 +49,34 @@ flowchart TD
 
 接口层的可见性由 `status = 'published'` 兜底：`GET /api/courses` 与 `GET /api/courses/:slug` 都只返回已上架课程，未上架课程访问详情返回 404 `COURSE_NOT_FOUND`。
 
+### 落地情况
+
+上表流程里，第 2 到第 6 步已经在 `apps/api` + `apps/web` 里真实跑通（mock 与 postgres 两种数据源都验证过），
+端点与字段见 `docs/api-contract.md`：
+
+| 流程步骤 | 状态 | 落点 |
+| --- | --- | --- |
+| 申请成为教师 / 商家 | 已实现 | `POST /api/creators/applications`、`GET /api/creators/applications/mine`；页面 `/creator` |
+| 管理员审核教师 / 商家 | 已实现 | `GET /api/admin/creators`、`/approve`、`/reject`；页面 `/admin`「待审教师 / 商家」 |
+| 通过后升级 `users.role` | 已实现 | 与 `creators` 更新在同一事务内完成，admin 不被降级 |
+| 驳回后复用同一行重新提交 | 已实现 | `003_creator_identity.sql` 的 `(user_id, role)` 部分唯一索引兜底 |
+| 教师创建课程草稿 | 已实现 | `POST /api/teacher/courses`；页面 `/creator`「新建课程草稿」 |
+| 提交审核 draft → review | 已实现 | `POST /api/teacher/courses/:id/submit` |
+| 管理员上架 / 驳回课程 | 已实现 | `GET /api/admin/courses`、`/publish`、`/reject`；页面 `/admin`「待上架课程」 |
+| 已上架课程对外可见 | 已实现 | `GET /api/courses`、`GET /api/courses/:slug` |
+| 角色以 `users.role` 为准 | 已实现 | `requireUser` 回库读角色，请求头/请求体的角色声明一律忽略 |
+
+### 待办（尚未实现，不要当成已完成）
+
+- **Privy 真实令牌校验**：`AUTH_MODE=privy` 只做到「缺 `PRIVY_APP_ID` / `PRIVY_APP_SECRET` 就启动失败」，
+  `PrivyAuthVerifier.verify()` 目前直接抛 `NOT_IMPLEMENTED`。当前能跑的只有 `AUTH_MODE=demo` 的
+  `demo:<privy_user_id>` 令牌，**仅限本地**。
+- **用户建号**：后端没有注册端点，`UserRepository` 只有 `findByPrivyUserId`。mock 模式靠预置的四个演示账号，
+  postgres 模式要手工往 `users` 插行。首登自动建号要等 Privy 接入后一起做。
+- **课程上链联动**：上架只改数据库 `status`，不会调用 `CourseRegistry.createCourse`，
+  `chain_course_id` / `registry_address` / `publish_tx_hash` 仍恒为空，购买链路还没接上审核结果。
+- **商家能力**：商家可以申请、可以被审核通过，但 `/creator` 里商家侧只有占位，没有分账配置或商家专属操作。
+
 ## 已配置地址（Sepolia 公开地址）
 
 | 用途 | 地址 |
@@ -60,7 +88,7 @@ flowchart TD
 
 写入位置：`contracts/ignition/parameters.sepolia.json`（`admin` / `platformTreasury` / `defaultTeacher` / `defaultMerchant`），
 其中 `admin` 与 `platformTreasury` 同时作为 `contracts/ignition/modules/YDUniversity.ts` 的参数默认值；
-演示课程的教师钱包与商家钱包写在 `apps/api/src/repositories/mock-course-repository.ts` 顶部常量。
+演示课程的教师钱包与商家钱包写在 `apps/api/src/repositories/mock-data.ts` 顶部常量。
 
 **本仓库不含任何私钥。** 上述四个地址都是可公开的 Sepolia 地址。部署所需的
 `SEPOLIA_PRIVATE_KEY`、`SEPOLIA_RPC_URL`、`ETHERSCAN_API_KEY` 只以尖括号占位符出现在 `.env.example`，

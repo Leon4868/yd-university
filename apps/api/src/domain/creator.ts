@@ -19,5 +19,5 @@ export interface CreatorApplication {
 
 /** 管理端列表比申请本体多一份申请人信息，存量数据没有 user_id 时为 null */
 export interface CreatorApplicationWithApplicant extends CreatorApplication {
-  applicant: { id: string; username: string; role: UserRole } | null;
+  applicant: { id: string; username: string; role: UserRole; primaryWallet: string | null } | null;
 }

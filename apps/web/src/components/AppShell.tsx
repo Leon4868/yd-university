@@ -10,6 +10,7 @@ function shortenAddress(address: string) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const auth = useAuth();
+  const isAdmin = auth.authenticated && auth.role === "admin";
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -21,10 +22,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           <nav className="main-nav" aria-label="主导航">
             <NavLink to="/">课程</NavLink>
             <NavLink to="/learn/solidity-from-zero">我的学习</NavLink>
-            <NavLink to="/creator">创作者中心</NavLink>
+            {auth.authenticated && <NavLink to="/creator">创作者中心</NavLink>}
+            {isAdmin && <NavLink to="/admin">管理后台</NavLink>}
           </nav>
           <div className="wallet-cluster">
-            {auth.demoMode && <span className="demo-badge">演示模式</span>}
+            {auth.demoMode && auth.demoIdentities.length > 0 && (
+              <label className="demo-switch">
+                <span className="demo-badge">演示模式</span>
+                <select value={auth.demoUserId ?? ""} aria-label="切换演示身份" onChange={(event) => auth.switchDemoIdentity(event.target.value)}>
+                  {auth.demoIdentities.map((item) => <option key={item.privyUserId} value={item.privyUserId}>{item.label}</option>)}
+                </select>
+              </label>
+            )}
             <span className="network-badge"><i />Ethereum Sepolia</span>
             <span className="balance"><WalletCards size={16} />128.40 YD</span>
             {auth.authenticated && auth.walletAddress ? (

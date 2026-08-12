@@ -34,6 +34,7 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null);
 const privyAppId: string = import.meta.env.VITE_PRIVY_APP_ID ?? "";
 const hasConfiguredPrivy = Boolean(privyAppId.trim() && !privyAppId.trim().startsWith("<"));
+const TOKEN_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 
 // 仅本地开发用：demo 模式下 token 形如 demo:<privy_user_id>，对应后端 DemoAuthVerifier。
 // 这里只决定「用哪个 subject 发请求」，真实角色始终由 /api/me 的 users.role 决定，
@@ -96,8 +97,13 @@ function PrivyAuthBridge({ children }: { children: ReactNode }) {
       return;
     }
     let cancelled = false;
-    void getAccessToken().then((value) => { if (!cancelled) setToken(value); });
-    return () => { cancelled = true; };
+    const refresh = () => {
+      void getAccessToken().then((value) => { if (!cancelled) setToken(value); });
+    };
+    refresh();
+    // Privy access token 约 1 小时过期，定时重取避免长时间停留后全站 401
+    const timer = window.setInterval(refresh, TOKEN_REFRESH_INTERVAL_MS);
+    return () => { cancelled = true; window.clearInterval(timer); };
   }, [authenticated, getAccessToken]);
   const identity = useMemo<Identity>(
     () => ({

@@ -1,7 +1,9 @@
 import { Route, Routes } from "react-router-dom";
 
 import { AppShell } from "./components/AppShell.tsx";
+import { AdminPage } from "./pages/AdminPage.tsx";
 import { CourseDetailPage } from "./pages/CourseDetailPage.tsx";
+import { CreatorPage } from "./pages/CreatorPage.tsx";
 import { FeaturePage } from "./pages/FeaturePage.tsx";
 import { HomePage } from "./pages/HomePage.tsx";
 import { LearnPage } from "./pages/LearnPage.tsx";
@@ -18,8 +20,8 @@ export function App() {
         <Route path="/learn/:slug" element={<LearnPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/swap" element={<FeaturePage type="swap" />} />
-        <Route path="/creator" element={<FeaturePage type="creator" />} />
-        <Route path="/admin" element={<FeaturePage type="admin" />} />
+        <Route path="/creator" element={<CreatorPage />} />
+        <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<HomePage />} />
       </Routes>
     </AppShell>

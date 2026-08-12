@@ -1,7 +1,8 @@
-import postgres, { type Sql } from "postgres";
+import type { Sql } from "postgres";
 
 import type { CourseDetail, CourseLevel, CourseSection, CourseSummary } from "../domain/course.js";
 import type { CourseRepository } from "./course-repository.js";
+import { toXHandle } from "./postgres-managed-course.js";
 
 interface CourseRow {
   id: string;
@@ -38,8 +39,8 @@ interface SectionRow {
 export class PostgresCourseRepository implements CourseRepository {
   private readonly sql: Sql;
 
-  constructor(databaseUrl: string) {
-    this.sql = postgres(databaseUrl, { max: 10 });
+  constructor(sql: Sql) {
+    this.sql = sql;
   }
 
   async listPublished(): Promise<CourseSummary[]> {
@@ -148,19 +149,6 @@ function mapCourseRow(row: CourseRow): CourseSummary {
     status: row.status,
     coverTone: row.cover_tone,
   };
-}
-
-/** 002 迁移只存了 X 链接，handle 由链接首段路径推导 */
-function toXHandle(xUrl: string | null): string | null {
-  if (!xUrl) {
-    return null;
-  }
-  try {
-    const [handle] = new URL(xUrl).pathname.split("/").filter(Boolean);
-    return handle ? `@${handle}` : null;
-  } catch {
-    return null;
-  }
 }
 
 function mapSectionRow(row: SectionRow): CourseSection {
