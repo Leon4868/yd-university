@@ -111,7 +111,7 @@ function LearnWorkspace({ slug, token }: { slug: string; token: string }) {
             <ShieldCheck />
             <div>
               <strong>证书自动验证</strong>
-              <p>{record.completed ? "进度已达 100%，完成记录已落库，等待 Chainlink CRE 完成报告后铸造证书。" : "学习进度达到 100% 后，Chainlink CRE 将消费完成报告并铸造证书。"}</p>
+              <p>{record.completed ? "进度已达 100%，平台正在为你的钱包铸造证书，稍后刷新即可看到。" : "学习进度达到 100% 后，平台会自动为你的钱包铸造不可转让证书。"}</p>
             </div>
             <div className="certificate-flow"><span className={record.completed ? "done" : "active"}>学习中</span><i /><span className={record.completed ? "active" : ""}>验证中</span><i /><span>已发放</span></div>
           </div>

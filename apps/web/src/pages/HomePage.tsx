@@ -68,7 +68,7 @@ export function HomePage() {
         <div className="step-grid">
           <div><span>01</span><BookOpenCheck /><h3>购买课程</h3><p>使用 YD 完成链上购买，CourseMarket 留下公开凭证。</p></div>
           <div><span>02</span><CheckCircle2 /><h3>完成学习</h3><p>教务系统按章节计算进度，全部完成后达到 100%。</p></div>
-          <div><span>03</span><Award /><h3>获得证书</h3><p>CRE 传递完成报告，自动铸造不可转让 ERC721 证书。</p></div>
+          <div><span>03</span><Award /><h3>获得证书</h3><p>学完全部章节后自动铸造不可转让 ERC721 证书。</p></div>
         </div>
       </section>
       <section className="continue-card page-container">

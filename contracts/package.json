@@ -13,7 +13,8 @@
     "chain:verify": "hardhat run --network sepolia scripts/verify-deployment.ts",
     "chain:create-course": "hardhat run --network sepolia scripts/create-demo-course.ts",
     "chain:smoke": "hardhat run --network sepolia scripts/smoke-purchase-and-certificate.ts",
-    "chain:add-liquidity": "hardhat run --network sepolia scripts/add-liquidity.ts"
+    "chain:add-liquidity": "hardhat run --network sepolia scripts/add-liquidity.ts",
+    "chain:grant-minter": "hardhat run --network sepolia scripts/grant-certificate-minter.ts"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0"

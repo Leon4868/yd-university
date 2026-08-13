@@ -215,7 +215,7 @@ code 为 `COURSE_NOT_FOUND`（404）与 `INVALID_COURSE_SLUG`（400），不在�
 - `sectionId` 必须属于该课程，否则 404；非 uuid → 400。
 - 完成写入 `lesson_progress(user_id, section_id, completed_at)`，主键冲突时更新，保证幂等。
 - `totalSections = 0` 的课程 `percent` 记 0、`completed` 为 false，避免空课程被判定完成。
-- 达到 100% 后，完成记录进入 Chainlink CRE 的完成报告流程；CRE 消费唯一报告后调用 `CompletionReceiver`，由证书合约铸造不可转让证书。
+- 达到 100% 后，后端用独立发证钱包调用 `CourseCertificate.mintCertificate` 铸造不可转让证书。发证前先读链上 `certificateOf` 跳过已发的，失败由定时扫描重试，重复触发不会重复铸造。
 
 ### 小节字段变更（v0.3）
 

@@ -292,4 +292,4 @@ npm run chain:smoke -w @yd/contracts
 2. 运行合约测试，观察 `approve -> buy -> pendingWithdrawals`。
 3. 启动 API，访问 `/health`、`/api/courses` 与 `/api/courses/solidity-from-zero`。
 4. 启动前端，跑一遍「本地跑通审核流」，再体验课程详情中的两步购买状态机。
-5. 最后再部署 Sepolia、接 Privy、Uniswap 和 Chainlink CRE。
+5. 最后再部署 Sepolia、接 Privy、Uniswap 和后端自动发证。

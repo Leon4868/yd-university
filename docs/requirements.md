@@ -10,7 +10,7 @@
 | 收益分配 | 教师 70%、商家 20%、平台 10% | v0.1 |
 | 证书 | ERC721 兼容、不可转让、可由管理员说明原因后撤销 | v0.1 |
 | 完成条件 | 所有课程小节完成，聚合进度达到 100% | v0.1 |
-| 自动发证 | Chainlink CRE 把后端完成记录传给接收器后触发 mint | v0.1 |
+| 自动发证 | 进度达 100% 后后端用独立发证钱包直接 mint（评估过 Chainlink CRE，因需 Early Access 审批且 onchain registry 要主网 gas 而放弃） | v0.3 |
 | 登录方式 | 全部支持：邮箱、Google、GitHub、钱包（Privy `loginMethods`） | v0.2 |
 | 角色 | 学生 / 教师 / 商家 / 管理员，四个角色全部保留，新用户默认学生 | v0.2 |
 | 教师准入 | 教师必须由管理员审核通过后才能开课 | v0.2 |
@@ -99,7 +99,8 @@ flowchart TD
 | --- | --- |
 | 管理员 `ADMIN` | `0x934124d582dd6618309b0905b4DE2631A2892EEe` |
 | 平台收款 `PLATFORM_TREASURY` | `0x934124d582dd6618309b0905b4DE2631A2892EEe`（与管理员同一地址） |
-| CRE forwarder `CRE_FORWARDER` | `0x934124d582dd6618309b0905b4DE2631A2892EEe`（CRE 未接入前临时与管理员同一地址） |
+| CRE forwarder `CRE_FORWARDER` | `0x934124d582dd6618309b0905b4DE2631A2892EEe`（CompletionReceiver 当前未接入，该参数暂无实际作用） |
+| 发证钱包 `CERTIFICATE_ISSUER` | 需自行生成的独立钱包，只授予 `MINTER_ROLE`，私钥放后端 `.env`，不进仓库 |
 | 商家 `MERCHANT` | `0x283A754de403b0Ee48560964f9f7C21491916499` |
 | 教师 `TEACHER` | `0xe1E5016aF35DfD90ccb6Bc03654D156b3f29764D` |
 
@@ -162,7 +163,7 @@ admin/platform/forwarder；Sepolia 部署时必须使用参数文件，且 `SEPO
 → 后端确认 CoursePurchased 事件
 → 学习全部章节
 → 进度达到 100%
-→ CRE 提交唯一完成报告
+→ 后端发证钱包调用 mintCertificate
 → 铸造不可转让证书
 ```
 

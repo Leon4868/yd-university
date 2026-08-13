@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
+import type { CertificateIssuer } from "../chain/certificate-issuer.js";
 import type { CourseDetail } from "../domain/course.js";
 import { type AuthGuards, currentUser } from "../auth/guards.js";
 import { fail, failValidation } from "../http/errors.js";
@@ -21,6 +22,7 @@ export async function registerLearningRoutes(
   guards: AuthGuards,
   courses: CourseRepository,
   progress: ProgressRepository,
+  certificates: CertificateIssuer,
 ) {
   const requireLearner = guards.requireRole("student", "teacher", "merchant");
   /** 只有已上架课程可学，未上架与不存在一律 404，不泄露存在性 */
@@ -53,7 +55,13 @@ export async function registerLearningRoutes(
       }
       const userId = currentUser(request).id;
       await mutate(userId, params.data.sectionId);
-      return readProgress(userId, course);
+      const result = await readProgress(userId, course);
+      // 学完最后一节立刻触发发证；kick 不阻塞，发证失败由兜底扫描重试，不影响本次响应。
+      // 取消完成只会让 percent 下降，所以这里天然只在 POST 完成路径上触发。
+      if (result.data.completed) {
+        certificates.kick();
+      }
+      return result;
     };
   }
 

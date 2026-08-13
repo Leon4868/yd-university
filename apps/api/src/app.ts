@@ -3,6 +3,11 @@ import Fastify, { type FastifyError } from "fastify";
 
 import { createAuthGuards } from "./auth/guards.js";
 import { type AuthVerifier, DemoAuthVerifier } from "./auth/verifier.js";
+import {
+  type CertificateIssuer,
+  DisabledCertificateIssuer,
+  type IssuerLogger,
+} from "./chain/certificate-issuer.js";
 import type { UserRole } from "./domain/user.js";
 import { fail } from "./http/errors.js";
 import { createMockRepositories, type Repositories } from "./repositories/create-repositories.js";
@@ -22,12 +27,20 @@ interface BuildAppOptions {
   bootstrapAdminSubjects?: readonly string[];
   bootstrapAdminWallets?: readonly string[];
   walletRoles?: ReadonlyMap<string, UserRole>;
+  /** 工厂形式是为了让发证器复用 Fastify 的 logger；不传则不发证，学习流程照常 */
+  certificateIssuer?: (logger: IssuerLogger) => CertificateIssuer;
   logger?: boolean;
 }
 
 export async function buildApp(options: BuildAppOptions = {}) {
   const app = Fastify({ logger: options.logger ?? false });
   const repositories = options.repositories ?? createMockRepositories();
+  const certificateIssuer =
+    options.certificateIssuer?.({
+      info: (message) => app.log.info(message),
+      warn: (message) => app.log.warn(message),
+      error: (message) => app.log.error(message),
+    }) ?? new DisabledCertificateIssuer();
   const guards = createAuthGuards(
     options.authVerifier ?? new DemoAuthVerifier(),
     repositories.users,
@@ -56,7 +69,13 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await registerAdminCourseRoutes(app, guards, repositories.adminCourses);
   await registerTeacherCourseRoutes(app, guards, repositories.creators, repositories.teacherCourses);
   await registerMerchantCourseRoutes(app, guards, repositories.creators, repositories.merchantCourses);
-  await registerLearningRoutes(app, guards, repositories.courses, repositories.progress);
+  await registerLearningRoutes(
+    app,
+    guards,
+    repositories.courses,
+    repositories.progress,
+    certificateIssuer,
+  );
 
   app.setNotFoundHandler((_request, reply) => fail(reply, 404, "NOT_FOUND", "接口不存在"));
 

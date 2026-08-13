@@ -13,9 +13,8 @@ flowchart LR
     MARKET --> EVENT["CoursePurchased"]
     EVENT --> INDEXER["事件索引器"]
     INDEXER --> DB
-    API --> CRE["Chainlink CRE"]
-    CRE --> RECEIVER["CompletionReceiver"]
-    RECEIVER --> NFT["CourseCertificate"]
+    API --> ISSUER["发证钱包<br/>仅 MINTER_ROLE"]
+    ISSUER --> NFT["CourseCertificate"]
 ```
 
 ## 合约职责
@@ -26,7 +25,7 @@ flowchart LR
 | `CourseRegistry` | 课程价格、角色、分账和上架状态 | AccessControl、价格事件、比例合计 10000 bps |
 | `CourseMarket` | `approve + buy`、购买关系、分账记账、提现 | SafeERC20、ReentrancyGuard、maxPrice、防重复购买 |
 | `CourseCertificate` | 不可转让课程证书 | 购买校验、每课每钱包一张、转账阻断 |
-| `CompletionReceiver` | 接收 CRE 完成报告 | forwarder 白名单、completionId 防重放 |
+| `CompletionReceiver` | 已部署但当前未接入；原为 Chainlink CRE 完成报告入口 | forwarder 白名单、completionId 防重放 |
 
 ## 认证与鉴权分层
 
