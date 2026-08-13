@@ -9,6 +9,8 @@ export interface CourseSectionInput {
 export interface CourseDraftInput {
   /** creators.id，教师本人已通过审核的创作者身份 */
   teacherId: string;
+  /** creators.id，必须是已审核通过的 merchant */
+  merchantId: string;
   slug: string;
   title: string;
   summary: string;

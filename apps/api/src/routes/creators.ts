@@ -18,7 +18,7 @@ export async function registerCreatorRoutes(
   guards: AuthGuards,
   creators: CreatorRepository,
 ) {
-  app.post("/api/creators/applications", { preHandler: guards.requireUser }, async (request, reply) => {
+  app.post("/api/creators/applications", { preHandler: guards.requireRole("student") }, async (request, reply) => {
     const parsed = applicationBodySchema.safeParse(request.body);
     if (!parsed.success) {
       return failValidation(reply, parsed.error);

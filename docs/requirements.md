@@ -22,6 +22,19 @@
 四个角色对应数据库枚举 `user_role('student','teacher','merchant','admin')`，用户注册后一律落为 `student`。
 升级为教师、以及课程对外可见，都必须经过管理员这一道人工审核。
 
+### 角色权限矩阵
+
+| 角色 | 展示入口 | 可执行功能 | 服务端边界 |
+| --- | --- | --- | --- |
+| 游客 | 课程 | 浏览已上架课程、查看详情 | 只访问公开课程接口 |
+| 学生 | 课程、我的学习、申请入驻 | 购买课程、完成章节、申请教师或商家 | 创作者申请仅允许 `student` |
+| 教师 | 课程、我的学习、教学中心 | 管理自己的课程、提交审核、读取并提取 70% 链上分账 | 教师接口要求 `role=teacher` 且资质已审核 |
+| 商家 | 课程、我的学习、商家中心 | 查看参与分账课程、读取并提取 20% 链上分账 | 商家接口要求 `role=merchant` 且资质已审核 |
+| 管理员 | 课程、管理后台 | 审核入驻申请与课程上架 | 管理端接口只允许 `role=admin` |
+
+前端隐藏入口只是体验层，`/creator`、`/admin`、`/learn`、`/profile`、`/swap` 还有统一路由边界；真正权限由 API 的
+`requireRole` 强制执行。管理员在应用 UI 中不参与课程购买与学习，合约本身仍按钱包地址和链上状态执行。
+
 ```mermaid
 flowchart TD
     R["注册 / 登录<br/>邮箱 · Google · GitHub · 钱包"] --> S["学生 role=student"]
@@ -60,11 +73,15 @@ flowchart TD
 | 管理员审核教师 / 商家 | 已实现 | `GET /api/admin/creators`、`/approve`、`/reject`；页面 `/admin`「待审教师 / 商家」 |
 | 通过后升级 `users.role` | 已实现 | 与 `creators` 更新在同一事务内完成，admin 不被降级 |
 | 驳回后复用同一行重新提交 | 已实现 | `003_creator_identity.sql` 的 `(user_id, role)` 部分唯一索引兜底 |
-| 教师创建课程草稿 | 已实现 | `POST /api/teacher/courses`；页面 `/creator`「新建课程草稿」 |
+| 教师创建课程草稿 | 已实现 | `GET /api/teacher/merchants` 选择已审核商家后调用 `POST /api/teacher/courses`；页面 `/creator`「新建课程草稿」 |
 | 提交审核 draft → review | 已实现 | `POST /api/teacher/courses/:id/submit` |
 | 管理员上架 / 驳回课程 | 已实现 | `GET /api/admin/courses`、`/publish`、`/reject`；页面 `/admin`「待上架课程」 |
 | 已上架课程对外可见 | 已实现 | `GET /api/courses`、`GET /api/courses/:slug` |
 | 角色以 `users.role` 为准 | 已实现 | `requireUser` 回库读角色，请求头/请求体的角色声明一律忽略 |
+| 商家查看分账课程 | 已实现 | `GET /api/merchant/courses`；页面 `/creator` 商家中心 |
+| 教师绑定分账商家 | 已实现 | 新建课程只允许选择已审核 merchant，后端再次校验并写入 `courses.merchant_id` |
+| 教师 / 商家提取分账 | 已实现 | 前端读取 `CourseMarket.pendingWithdrawals` 并调用 `withdraw()` |
+| 角色页面显隐与路由保护 | 已实现 | 统一权限矩阵控制导航、路由和工作台内容，API 再次鉴权 |
 
 ### 待办（尚未实现，不要当成已完成）
 
@@ -74,7 +91,7 @@ flowchart TD
 - **用户建号**：Privy access token 校验通过后，postgres 模式首登会自动创建学生账号；演示模式仍使用预置账号。
 - **课程上链联动**：上架只改数据库 `status`，不会调用 `CourseRegistry.createCourse`，
   `chain_course_id` / `registry_address` / `publish_tx_hash` 仍恒为空，购买链路还没接上审核结果。
-- **商家能力**：商家可以申请、可以被审核通过，但 `/creator` 里商家侧只有占位，没有分账配置或商家专属操作。
+- **课程绑定商家**：商家已能查看和提取既有课程分账，但教师建新课时尚未提供选择商家的流程，当前新课仍默认把教师身份同时作为 `merchant_id`。
 
 ## 已配置地址（Sepolia 公开地址）
 

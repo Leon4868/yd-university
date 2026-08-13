@@ -6,6 +6,8 @@ import { type AuthGuards, currentUser } from "../auth/guards.js";
 import { fail, failValidation } from "../http/errors.js";
 import type { CreatorRepository } from "../repositories/creator-repository.js";
 import type { TeacherCourseRepository } from "../repositories/teacher-course-repository.js";
+import { findApprovedCreator } from "./creator-access.js";
+import { toCreatorView } from "./presenters.js";
 import { httpUrlSchema, idParamsSchema } from "./schemas.js";
 
 // 小节不再有视频或外链，strict 让残留的 url 字段直接被拒
@@ -16,6 +18,7 @@ const sectionSchema = z.strictObject({
 });
 
 const draftBodySchema = z.object({
+  merchantId: z.uuid(),
   slug: z.string().trim().min(1).max(120).regex(/^[a-z0-9-]+$/, "slug 只能包含小写字母、数字与短横线"),
   title: z.string().trim().min(1).max(160),
   summary: z.string().trim().min(1).max(500),
@@ -39,7 +42,7 @@ export async function registerTeacherCourseRoutes(
     request: FastifyRequest,
     reply: FastifyReply,
   ): Promise<CreatorApplication | null> {
-    const teacher = await creators.findApproved(currentUser(request).id, "teacher");
+    const teacher = await findApprovedCreator(creators, currentUser(request), "teacher");
     if (!teacher) {
       await fail(reply, 403, "FORBIDDEN", "教师身份尚未通过审核");
       return null;
@@ -47,7 +50,16 @@ export async function registerTeacherCourseRoutes(
     return teacher;
   }
 
-  app.get("/api/teacher/courses", { preHandler: guards.requireUser }, async (request, reply) => {
+  const requireTeacher = guards.requireRole("teacher");
+
+  app.get("/api/teacher/merchants", { preHandler: requireTeacher }, async (request, reply) => {
+    const teacher = await resolveTeacher(request, reply);
+    if (!teacher) return reply;
+    const approved = await creators.listByStatus("approved");
+    return { data: approved.filter((creator) => creator.role === "merchant").map(toCreatorView) };
+  });
+
+  app.get("/api/teacher/courses", { preHandler: requireTeacher }, async (request, reply) => {
     const teacher = await resolveTeacher(request, reply);
     if (!teacher) {
       return reply;
@@ -55,7 +67,7 @@ export async function registerTeacherCourseRoutes(
     return { data: await courses.listByTeacher(teacher.id) };
   });
 
-  app.post("/api/teacher/courses", { preHandler: guards.requireUser }, async (request, reply) => {
+  app.post("/api/teacher/courses", { preHandler: requireTeacher }, async (request, reply) => {
     const teacher = await resolveTeacher(request, reply);
     if (!teacher) {
       return reply;
@@ -64,11 +76,15 @@ export async function registerTeacherCourseRoutes(
     if (!parsed.success) {
       return failValidation(reply, parsed.error);
     }
+    const merchant = await creators.findById(parsed.data.merchantId);
+    if (!merchant || merchant.role !== "merchant" || merchant.reviewStatus !== "approved") {
+      return fail(reply, 400, "INVALID_REQUEST", "请选择已审核通过的分账商家");
+    }
     const created = await courses.create({ teacherId: teacher.id, ...parsed.data });
     return reply.code(201).send({ data: created });
   });
 
-  app.post("/api/teacher/courses/:id/submit", { preHandler: guards.requireUser }, async (request, reply) => {
+  app.post("/api/teacher/courses/:id/submit", { preHandler: requireTeacher }, async (request, reply) => {
     const teacher = await resolveTeacher(request, reply);
     if (!teacher) {
       return reply;

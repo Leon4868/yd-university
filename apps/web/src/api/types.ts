@@ -45,6 +45,7 @@ export interface CourseSectionInput {
 }
 
 export interface CourseDraftInput {
+  merchantId: string;
   slug: string;
   title: string;
   summary: string;
@@ -71,6 +72,7 @@ export interface ManagedCourse {
   courseUrl?: string | null;
   providerName?: string | null;
   teacherName?: string | null;
+  merchantWallet?: string | null;
   lessonCount?: number | null;
   submittedAt?: string | null;
   reviewedAt?: string | null;

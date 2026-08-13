@@ -16,6 +16,8 @@ export interface CreatorRepository {
   /** /api/me 与「我的申请」只展示最近一条 */
   findLatestByUser(userId: string): Promise<CreatorApplication | null>;
   findApproved(userId: string, role: CreatorRole): Promise<CreatorApplication | null>;
+  /** 钱包白名单映射账号可复用按收款钱包预置的已审核创作者资料 */
+  findApprovedByWallet(walletAddress: string, role: CreatorRole): Promise<CreatorApplication | null>;
   /** 冲突时抛 RepositoryConflictError；已驳回的申请复用同一行重置为 pending */
   apply(input: CreatorApplicationInput): Promise<CreatorApplication>;
   listByStatus(status: ReviewStatus): Promise<CreatorApplicationWithApplicant[]>;

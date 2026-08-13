@@ -1,10 +1,31 @@
 import { ArrowRight, Award, BookOpenCheck, CheckCircle2, ShieldCheck, Sparkles } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { CourseCard } from "../components/CourseCard.tsx";
 import { courses } from "../data/courses.ts";
+import { useAuth } from "../auth/AuthContext.tsx";
+import { creatorCenterLabel, roleLabels } from "../auth/permissions.ts";
+
+const courseFilters = ["全部", "Web3 入门", "Solidity", "DeFi", "安全"] as const;
 
 export function HomePage() {
+  const auth = useAuth();
+  const [activeFilter, setActiveFilter] = useState<(typeof courseFilters)[number]>("全部");
+  const visibleCourses = courses.filter((course) => {
+    if (activeFilter === "全部") return true;
+    if (activeFilter === "Web3 入门") return course.level === "入门";
+    return course.category === activeFilter;
+  });
+  const roleAction = auth.role === "admin"
+    ? { title: "处理平台审核", description: "查看待审入驻申请与待上架课程。", label: "进入管理后台", to: "/admin" }
+    : auth.role === "teacher"
+      ? { title: "管理你的课程", description: "创建草稿、提交审核并查看链上教师分账。", label: `进入${creatorCenterLabel(auth.role)}`, to: "/creator" }
+      : auth.role === "merchant"
+        ? { title: "查看商家分账", description: "查看参与分账的课程与当前可提取 YD。", label: `进入${creatorCenterLabel(auth.role)}`, to: "/creator" }
+        : auth.role === "student"
+          ? { title: "开始你的学习", description: "完成章节会保存真实进度，达到 100% 后进入证书流程。", label: "进入我的学习", to: "/learn/solidity-from-zero" }
+          : { title: "正在确认账号身份", description: "角色读取完成后会展示对应工作台。", label: "查看账号状态", to: "/profile" };
   return (
     <>
       <section className="hero page-container">
@@ -31,11 +52,11 @@ export function HomePage() {
         </div>
       </section>
       <section className="stats-strip page-container" aria-label="平台数据">
-        <div><strong>48</strong><span>精选课程</span></div><div><strong>26</strong><span>认证讲师</span></div><div><strong>1,284</strong><span>已颁发证书</span></div>
+        <div><strong>{courses.length}</strong><span>演示课程</span></div><div><strong>4</strong><span>独立角色</span></div><div><strong>Sepolia</strong><span>链上验证网络</span></div>
       </section>
       <section id="courses" className="section page-container">
-        <div className="section-heading"><div><span className="overline">CURATED LEARNING</span><h2>热门课程</h2></div><div className="filters"><button className="active">全部</button><button>Web3 入门</button><button>Solidity</button><button>DeFi</button><button>安全</button></div></div>
-        <div className="course-grid">{courses.map((course) => <CourseCard key={course.slug} course={course} />)}</div>
+        <div className="section-heading"><div><span className="overline">CURATED LEARNING</span><h2>热门课程</h2></div><div className="filters">{courseFilters.map((filter) => <button type="button" key={filter} className={activeFilter === filter ? "active" : ""} aria-pressed={activeFilter === filter} onClick={() => setActiveFilter(filter)}>{filter}</button>)}</div></div>
+        <div className="course-grid">{visibleCourses.map((course) => <CourseCard key={course.slug} course={course} />)}</div>
       </section>
       <section className="section page-container verify-section">
         <div className="section-heading compact"><div><span className="overline">VERIFIABLE PROGRESS</span><h2>学习如何被验证</h2></div></div>
@@ -46,9 +67,9 @@ export function HomePage() {
         </div>
       </section>
       <section className="continue-card page-container">
-        <div className="continue-cover violet"><span>72%</span></div>
-        <div className="continue-content"><span className="overline">继续学习</span><h3>Solidity 智能合约开发从入门到实战</h3><p>下一节：部署你的第一个合约</p><div className="progress"><i style={{ width: "72%" }} /></div></div>
-        <Link to="/learn/solidity-from-zero" className="button primary">继续学习<ArrowRight size={18} /></Link>
+        <div className="continue-cover violet"><span>{auth.role ? roleLabels[auth.role].slice(0, 2) : "YD"}</span></div>
+        <div className="continue-content"><span className="overline">{auth.authenticated ? "ROLE WORKSPACE" : "WELCOME"}</span><h3>{auth.authenticated ? roleAction.title : "登录后保存学习进度"}</h3><p>{auth.authenticated ? roleAction.description : "支持邮箱、Google、GitHub 与钱包登录。"}</p></div>
+        {auth.authenticated ? <Link to={roleAction.to} className="button primary">{roleAction.label}<ArrowRight size={18} /></Link> : <button type="button" className="button primary" onClick={auth.login}>登录开始<ArrowRight size={18} /></button>}
       </section>
     </>
   );

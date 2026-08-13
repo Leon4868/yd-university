@@ -3,6 +3,7 @@ import Fastify, { type FastifyError } from "fastify";
 
 import { createAuthGuards } from "./auth/guards.js";
 import { type AuthVerifier, DemoAuthVerifier } from "./auth/verifier.js";
+import type { UserRole } from "./domain/user.js";
 import { fail } from "./http/errors.js";
 import { createMockRepositories, type Repositories } from "./repositories/create-repositories.js";
 import { RepositoryConflictError } from "./repositories/errors.js";
@@ -11,6 +12,7 @@ import { registerAdminCreatorRoutes } from "./routes/admin-creators.js";
 import { registerCourseRoutes } from "./routes/courses.js";
 import { registerCreatorRoutes } from "./routes/creators.js";
 import { registerLearningRoutes } from "./routes/learning.js";
+import { registerMerchantCourseRoutes } from "./routes/merchant-courses.js";
 import { registerMeRoutes } from "./routes/me.js";
 import { registerTeacherCourseRoutes } from "./routes/teacher-courses.js";
 
@@ -19,6 +21,7 @@ interface BuildAppOptions {
   authVerifier?: AuthVerifier;
   bootstrapAdminSubjects?: readonly string[];
   bootstrapAdminWallets?: readonly string[];
+  walletRoles?: ReadonlyMap<string, UserRole>;
   logger?: boolean;
 }
 
@@ -30,12 +33,13 @@ export async function buildApp(options: BuildAppOptions = {}) {
     repositories.users,
     options.bootstrapAdminSubjects,
     options.bootstrapAdminWallets,
+    options.walletRoles,
   );
 
   await app.register(cors, {
     origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
     methods: ["GET", "POST", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization", "privy-id-token"],
+    allowedHeaders: ["Content-Type", "Authorization", "privy-id-token", "x-active-wallet"],
   });
 
   app.decorateRequest("currentUser", null);
@@ -51,6 +55,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await registerAdminCreatorRoutes(app, guards, repositories.creators);
   await registerAdminCourseRoutes(app, guards, repositories.adminCourses);
   await registerTeacherCourseRoutes(app, guards, repositories.creators, repositories.teacherCourses);
+  await registerMerchantCourseRoutes(app, guards, repositories.creators, repositories.merchantCourses);
   await registerLearningRoutes(app, guards, repositories.courses, repositories.progress);
 
   app.setNotFoundHandler((_request, reply) => fail(reply, 404, "NOT_FOUND", "接口不存在"));

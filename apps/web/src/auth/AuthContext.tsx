@@ -1,7 +1,7 @@
-import { PrivyProvider, useIdentityToken, useLogin, usePrivy, useWallets, type EIP1193Provider } from "@privy-io/react-auth";
+import { PrivyProvider, useActiveWallet, useIdentityToken, useLogin, usePrivy, useWallets, type EIP1193Provider } from "@privy-io/react-auth";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import { ApiError, getMe } from "../api/client.ts";
+import { ApiError, getMe, setApiIdentity } from "../api/client.ts";
 import type { CreatorApplication, CurrentUser, UserRole } from "../api/types.ts";
 
 export type { UserRole };
@@ -16,7 +16,7 @@ interface AuthState {
   authenticated: boolean;
   displayName: string;
   walletAddress: string | null;
-  role: UserRole;
+  role: UserRole | null;
   creator: CreatorApplication | null;
   token: string | null;
   demoMode: boolean;
@@ -72,6 +72,7 @@ interface Identity {
   demoMode: boolean;
   loginError: string | null;
   identityToken: string | null;
+  activeWalletAddress: string | null;
   fallbackDisplayName: string;
   fallbackWallet: string | null;
   login: () => void;
@@ -105,12 +106,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 function PrivyAuthBridge({ children }: { children: ReactNode }) {
   const { ready, authenticated, logout, user, getAccessToken } = usePrivy();
   const { identityToken } = useIdentityToken();
+  const { wallet: activeWallet } = useActiveWallet();
   const { wallets, ready: walletsReady } = useWallets();
   const [loginError, setLoginError] = useState<string | null>(null);
   const { login: openLogin } = useLogin({
     onError: (error) => setLoginError(formatPrivyLoginError(String(error))),
   });
-  const ethereumWallet = wallets.find((wallet) => wallet.type === "ethereum");
+  const ethereumWallet = activeWallet?.type === "ethereum"
+    ? activeWallet
+    : wallets.find((wallet) => wallet.type === "ethereum");
   const [token, setToken] = useState<string | null>(null);
   useEffect(() => {
     if (!authenticated) {
@@ -134,8 +138,9 @@ function PrivyAuthBridge({ children }: { children: ReactNode }) {
       demoMode: false,
       loginError,
       identityToken,
+      activeWalletAddress: ethereumWallet?.address ?? null,
       fallbackDisplayName: user?.email?.address?.split("@")[0] ?? "学习者",
-      fallbackWallet: user?.wallet?.address ?? null,
+      fallbackWallet: ethereumWallet?.address ?? user?.wallet?.address ?? null,
       login: () => { setLoginError(null); openLogin(); },
       logout: () => { setLoginError(null); void logout(); },
       getEthereumProvider: ethereumWallet ? () => ethereumWallet.getEthereumProvider() : null,
@@ -157,6 +162,7 @@ function DemoAuthBridge({ children }: { children: ReactNode }) {
       demoMode: true,
       loginError: null,
       identityToken: null,
+      activeWalletAddress: null,
       fallbackDisplayName: demoIdentities.find((item) => item.privyUserId === demoUserId)?.label ?? demoUserId,
       fallbackWallet: authenticated ? demoWallet : null,
       login: () => setAuthenticated(true),
@@ -172,21 +178,34 @@ function DemoAuthBridge({ children }: { children: ReactNode }) {
 
 function ProfileBridge({ identity, demo, walletReady, children }: { identity: Identity; demo: DemoControls | null; walletReady: boolean; children: ReactNode }) {
   const [profile, setProfile] = useState<CurrentUser | null>(null);
+  const [profileIdentityKey, setProfileIdentityKey] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const { authenticated, token } = identity;
+  const identityKey = `${token ?? ""}|${identity.identityToken ?? ""}|${identity.activeWalletAddress?.toLowerCase() ?? ""}`;
+
+  useEffect(() => {
+    setApiIdentity(identity.identityToken, identity.activeWalletAddress);
+    return () => setApiIdentity(null, null);
+  }, [identity.activeWalletAddress, identity.identityToken]);
 
   useEffect(() => {
     if (!authenticated || !token) {
       setProfile(null);
+      setProfileIdentityKey(null);
       setProfileError(null);
       setProfileLoading(false);
       return;
     }
     const controller = new AbortController();
     setProfileLoading(true);
-    getMe(token, controller.signal, identity.identityToken)
+    getMe(
+      token,
+      controller.signal,
+      identity.identityToken,
+      identity.identityToken ? identity.activeWalletAddress : null,
+    )
       .then((current) => {
         if (controller.signal.aborted) return;
         setProfile(current);
@@ -195,29 +214,36 @@ function ProfileBridge({ identity, demo, walletReady, children }: { identity: Id
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
         setProfile(null);
-        // 拿不到角色时降级为本地演示身份，不白屏，由 UI 明示降级
+        // 拿不到角色时不猜测身份，由路由边界明确阻止访问并提供重试
         setProfileError(error instanceof ApiError ? error.message : "读取账号信息失败");
       })
       .finally(() => {
-        if (!controller.signal.aborted) setProfileLoading(false);
+        if (!controller.signal.aborted) {
+          setProfileIdentityKey(identityKey);
+          setProfileLoading(false);
+        }
       });
     return () => controller.abort();
-  }, [authenticated, identity.identityToken, token, reloadKey]);
+  }, [authenticated, identity.activeWalletAddress, identity.identityToken, identityKey, token, reloadKey]);
 
   const refreshProfile = useCallback(() => setReloadKey((current) => current + 1), []);
+  const profileIsCurrent = profileIdentityKey === identityKey;
+  const currentProfile = profileIsCurrent ? profile : null;
+  const currentProfileError = profileIsCurrent ? profileError : null;
+  const isChangingIdentity = Boolean(authenticated && token && !profileIsCurrent);
 
   const value = useMemo<AuthState>(
     () => ({
       ready: identity.ready,
       authenticated: identity.authenticated,
-      displayName: profile?.username ?? identity.fallbackDisplayName,
-      walletAddress: profile?.primaryWallet ?? identity.fallbackWallet,
-      role: profile?.role ?? "student",
-      creator: profile?.creator ?? null,
+      displayName: currentProfile?.username ?? identity.fallbackDisplayName,
+      walletAddress: currentProfile?.primaryWallet ?? identity.fallbackWallet,
+      role: identity.authenticated ? currentProfile?.role ?? null : null,
+      creator: identity.authenticated ? currentProfile?.creator ?? null : null,
       token: identity.token,
       demoMode: identity.demoMode,
-      profileLoading,
-      profileError,
+      profileLoading: profileLoading || isChangingIdentity,
+      profileError: currentProfileError,
       loginError: identity.loginError,
       demoIdentities: identity.demoMode ? demoIdentities : [],
       demoUserId: demo?.demoUserId ?? null,
@@ -229,7 +255,7 @@ function ProfileBridge({ identity, demo, walletReady, children }: { identity: Id
       login: identity.login,
       logout: identity.logout,
     }),
-    [demo, identity, profile, profileError, profileLoading, refreshProfile, walletReady],
+    [currentProfile, currentProfileError, demo, identity, isChangingIdentity, profileLoading, refreshProfile, walletReady],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

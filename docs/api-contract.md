@@ -7,7 +7,7 @@
 
 ## 认证
 
-Privy App ID 尚未提供，因此认证做成可插拔的两段式（`apps/api/src/auth/verifier.ts`）：
+认证做成可插拔的两段式（`apps/api/src/auth/verifier.ts`），本地演示与真实 Privy 共用同一业务鉴权层：
 
 ```
 Authorization: Bearer <token>
@@ -36,6 +36,14 @@ Authorization: Bearer <token>
 `User management > Authentication > Advanced` 打开 `Return user data in an identity token`。
 白名单只在服务端 env 生效，请求头/请求体里的角色声明依旧无法影响角色。
 
+**钱包角色映射**：`WALLET_ROLE_MAPPINGS` 使用 `address=role` 形式配置多个映射，例如
+`0x...=teacher,0x...=merchant`。映射仅对后端验证过的 Privy identity token 钱包生效；未映射钱包首次登录仍为
+`student`。映射角色是测试/运营白名单，会覆盖该钱包登录账号的数据库角色，因此教师和商户若采用此方式将跳过申请审核。
+
+前端用 `x-active-wallet` 表明当前实际连接的钱包，后端只会在该地址同时存在于签名有效的 `privy-id-token.linked_accounts`
+时采用它；单独伪造该请求头会得到 401。切换已验证钱包后会同步 `users.primary_wallet` 与映射角色；从已映射钱包切到普通钱包时
+回到 `student`，避免同一 Privy subject 残留管理员权限。钱包映射的教师/商家可按钱包地址复用预置的已审核创作者资料。
+
 **角色一律以数据库 `users.role` 为准，绝不信任请求体或请求头里的角色声明。**
 未登录 401 `UNAUTHENTICATED`；已登录但角色不足 403 `FORBIDDEN`。
 
@@ -47,7 +55,7 @@ Authorization: Bearer <token>
 | --- | --- | --- |
 | 400 | `INVALID_REQUEST` | 参数校验失败（zod 第一条 issue 拼进 message），以及框架层 4xx（JSON 解析失败、载荷过大等） |
 | 401 | `UNAUTHENTICATED` | 缺少 token / token 无效 / subject 在库里没有对应用户 |
-| 403 | `FORBIDDEN` | 角色不足，或教师身份未通过审核 |
+| 403 | `FORBIDDEN` | 角色不足，或教师/商家身份未通过审核 |
 | 404 | `NOT_FOUND` | 资源不存在、对当前用户不可见，或路由不存在 |
 | 409 | `INVALID_STATE_TRANSITION` | 状态机不允许的流转，以及唯一约束冲突 |
 | 500 | `INTERNAL_SERVER_ERROR` | 未预期的服务端异常 |
@@ -74,7 +82,7 @@ code 为 `COURSE_NOT_FOUND`（404）与 `INVALID_COURSE_SLUG`（400），不在�
 
 `GET /api/me` → `{ data: { id, username, avatarUrl, primaryWallet, role, creator } }`
 其中 `role` ∈ `student` \| `teacher` \| `merchant` \| `admin`；
-`creator` 为当前用户**最近一条**创作者申请（无则 `null`）：
+`creator` 通常为当前用户最近一条创作者申请；钱包映射的教师/商家会优先返回同钱包的已审核创作者资料（无则 `null`）：
 `{ id, role, displayName, walletAddress, reviewStatus, rejectionReason, reviewedAt }`。
 审核人 `reviewedBy`、`verifiedAt`、`userId` 属内部字段，不下发。
 
@@ -82,7 +90,7 @@ code 为 `COURSE_NOT_FOUND`（404）与 `INVALID_COURSE_SLUG`（400），不在�
 
 | 方法 | 路径 | 权限 | 成功码 | 说明 |
 | --- | --- | --- | --- | --- |
-| POST | `/api/creators/applications` | 已登录 | 201 | 申请成为 teacher 或 merchant |
+| POST | `/api/creators/applications` | student | 201 | 申请成为 teacher 或 merchant |
 | GET | `/api/creators/applications/mine` | 已登录 | 200 | 查看自己最近一条申请，没有则 `{ data: null }` |
 
 `POST` body：`{ role: "teacher" \| "merchant", displayName: string(1..80), walletAddress: /^0x[0-9a-fA-F]{40}$/ }`
@@ -135,6 +143,7 @@ code 为 `COURSE_NOT_FOUND`（404）与 `INVALID_COURSE_SLUG`（400），不在�
 
 | 方法 | 路径 | 权限 | 成功码 | 说明 |
 | --- | --- | --- | --- | --- |
+| GET | `/api/teacher/merchants` | 已审核通过的 teacher | 200 | 可选的已审核商家列表 |
 | GET | `/api/teacher/courses` | 已审核通过的 teacher | 200 | 自己的全部课程（含未上架） |
 | POST | `/api/teacher/courses` | 已审核通过的 teacher | 201 | 建草稿 |
 | POST | `/api/teacher/courses/:id/submit` | 课程所属 teacher | 200 | 提交审核 |
@@ -143,6 +152,7 @@ code 为 `COURSE_NOT_FOUND`（404）与 `INVALID_COURSE_SLUG`（400），不在�
 
 | 字段 | 约束 |
 | --- | --- |
+| `merchantId` | UUID，且必须指向 `review_status='approved'` 的 merchant 创作者资料 |
 | `slug` | 1..120，`/^[a-z0-9-]+$/` |
 | `title` | 1..160 |
 | `summary` | 1..500 |
@@ -154,11 +164,21 @@ code 为 `COURSE_NOT_FOUND`（404）与 `INVALID_COURSE_SLUG`（400），不在�
 | `providerName?` | 1..60 |
 | `sections?` | ≤200 项，每项 `{ title(1..160), originalTitle?(1..160), durationSeconds?(0..86400) }`；不接受章节视频或外链字段 |
 
-创建后 `status='draft'`，归属为当前用户已通过审核的 `creators.id`。`slug` 重复 → 409。
+创建后 `status='draft'`，教师归属为当前用户已通过审核的 `creators.id`，20% 分账方为所选已审核商家；无效商家 → 400，`slug` 重复 → 409。
 提交审核：仅允许 `draft` → `review`，写 `submitted_at`，清空上轮 `rejection_reason`；其它状态 → 409。
 提交别人的课程或不存在的课程 → 404（不泄露存在性），`:id` 非 uuid → 400。
 
 **未通过审核的教师调用以上任一端点 → 403「教师身份尚未通过审核」**（先判资质，再校验参数）。
+
+### 商家：分账课程
+
+| 方法 | 路径 | 权限 | 成功码 | 说明 |
+| --- | --- | --- | --- | --- |
+| GET | `/api/merchant/courses` | 已审核通过的 merchant | 200 | 返回 `merchant_id` 为当前商家的全部课程 |
+
+返回 `ManagedCourse[]`，只读且不允许指定其他商家 ID。角色不为 `merchant` 或资质未通过均返回 403。
+链上可提取收益不经过此 API，前端直接读取 `CourseMarket.pendingWithdrawals(currentWallet)`；提取时由当前钱包签名调用
+`CourseMarket.withdraw()`。
 
 ### 公开课程（既有，不变）
 
@@ -173,9 +193,9 @@ code 为 `COURSE_NOT_FOUND`（404）与 `INVALID_COURSE_SLUG`（400），不在�
 
 | 方法 | 路径 | 权限 | 说明 |
 | --- | --- | --- | --- |
-| GET | `/api/learning/courses/:slug/progress` | 已登录 | 我在该课程的进度 |
-| POST | `/api/learning/courses/:slug/sections/:sectionId/complete` | 已登录 | 标记完成，幂等 |
-| DELETE | `/api/learning/courses/:slug/sections/:sectionId/complete` | 已登录 | 取消完成，幂等 |
+| GET | `/api/learning/courses/:slug/progress` | student / teacher / merchant | 我在该课程的进度 |
+| POST | `/api/learning/courses/:slug/sections/:sectionId/complete` | student / teacher / merchant | 标记完成，幂等 |
+| DELETE | `/api/learning/courses/:slug/sections/:sectionId/complete` | student / teacher / merchant | 取消完成，幂等 |
 
 三者响应同形 `CourseProgress`：
 

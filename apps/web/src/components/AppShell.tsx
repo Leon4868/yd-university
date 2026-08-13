@@ -3,24 +3,18 @@ import type { ReactNode } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext.tsx";
+import { creatorCenterLabel, roleLabels } from "../auth/permissions.ts";
 import { displayYdBalance, useYdBalance } from "../web3/useYdBalance.ts";
 
 function shortenAddress(address: string) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
-const roleLabels = {
-  student: "学生",
-  teacher: "老师",
-  merchant: "商户",
-  admin: "管理员",
-} as const;
-
 export function AppShell({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const ydBalance = useYdBalance();
   const navigate = useNavigate();
-  const isAdmin = auth.authenticated && auth.role === "admin";
+  const hasRole = auth.authenticated && auth.role !== null && !auth.profileError;
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -31,12 +25,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
           <nav className="main-nav" aria-label="主导航">
             <NavLink to="/">课程</NavLink>
-            <NavLink to="/learn/solidity-from-zero">我的学习</NavLink>
-            {auth.authenticated && <NavLink to="/creator">创作者中心</NavLink>}
-            {isAdmin && <NavLink to="/admin">管理后台</NavLink>}
+            {hasRole && auth.role !== "admin" && <NavLink to="/learn/solidity-from-zero">我的学习</NavLink>}
+            {hasRole && (auth.role === "student" || auth.role === "teacher" || auth.role === "merchant") && <NavLink to="/creator">{creatorCenterLabel(auth.role)}</NavLink>}
+            {hasRole && auth.role === "admin" && <NavLink to="/admin">管理后台</NavLink>}
           </nav>
           <div className="wallet-cluster">
-            {auth.demoMode && auth.demoIdentities.length > 0 && (
+            {auth.authenticated && auth.demoMode && auth.demoIdentities.length > 0 && (
               <label className="demo-switch">
                 <span className="demo-badge">演示模式</span>
                 <select value={auth.demoUserId ?? ""} aria-label="切换演示身份" onChange={(event) => auth.switchDemoIdentity(event.target.value)}>
@@ -45,11 +39,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               </label>
             )}
             <span className="network-badge"><i />Ethereum Sepolia</span>
-            <span className="balance" title={ydBalance.error ?? undefined}><WalletCards size={16} />{displayYdBalance(ydBalance.balance)} YD</span>
+            {auth.authenticated && <span className="balance" title={ydBalance.error ?? undefined}><WalletCards size={16} />{displayYdBalance(ydBalance.balance)} YD</span>}
             {auth.authenticated ? (
               <>
-                <Link to="/profile" className="wallet-button" title={`当前身份：${roleLabels[auth.role]}`}>
-                  {auth.walletAddress ? shortenAddress(auth.walletAddress) : auth.displayName} · {roleLabels[auth.role]}
+                <Link to="/profile" className="wallet-button" title={auth.role ? `当前身份：${roleLabels[auth.role]}` : "正在确认身份"}>
+                  {auth.walletAddress ? shortenAddress(auth.walletAddress) : auth.displayName} · {auth.role ? roleLabels[auth.role] : "身份确认中"}
                 </Link>
                 <button type="button" className="logout-button" onClick={() => { auth.logout(); navigate("/login"); }}>退出登录</button>
               </>

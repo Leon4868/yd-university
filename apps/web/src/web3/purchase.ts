@@ -12,14 +12,14 @@ import {
 
 import { contractAddresses, courseMarketAbi, hasSepoliaContractConfig, SEPOLIA_CHAIN_ID, ydTokenAbi } from "./contracts.ts";
 
-const TOKEN_DECIMALS = 18;
+export const TOKEN_DECIMALS = 18;
 
-function requireAddress(value: Address | undefined, name: string): Address {
+export function requireAddress(value: Address | undefined, name: string): Address {
   if (!value) throw new Error(`缺少 ${name} 配置，请检查前端环境变量`);
   return value;
 }
 
-async function getConnectedAccount(provider: EIP1193Provider): Promise<Address> {
+export async function getConnectedAccount(provider: EIP1193Provider): Promise<Address> {
   const result = await provider.request({ method: "eth_accounts" });
   const accounts = Array.isArray(result) ? result : [];
   const account = accounts.find((item): item is string => typeof item === "string");
@@ -27,7 +27,7 @@ async function getConnectedAccount(provider: EIP1193Provider): Promise<Address> 
   return account as Address;
 }
 
-async function assertSepolia(provider: EIP1193Provider) {
+export async function assertSepolia(provider: EIP1193Provider) {
   const result = await provider.request({ method: "eth_chainId" });
   const chainId = typeof result === "string" ? Number.parseInt(result, 16) : Number(result);
   if (chainId !== SEPOLIA_CHAIN_ID) {
@@ -35,7 +35,7 @@ async function assertSepolia(provider: EIP1193Provider) {
   }
 }
 
-function clients(provider: EIP1193Provider, account: Address) {
+export function clients(provider: EIP1193Provider, account: Address) {
   const transport = custom(provider);
   return {
     publicClient: createPublicClient({ chain: sepolia, transport }),

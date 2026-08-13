@@ -30,11 +30,11 @@ flowchart LR
 
 ## 认证与鉴权分层
 
-Privy App ID 未到位，所以认证做成可替换的一层，业务代码只依赖接口（`apps/api/src/auth/`）：
+认证做成可替换的一层，业务代码只依赖接口（`apps/api/src/auth/`）：
 
 ```text
 Authorization: Bearer <token>
-  → AuthVerifier.verify(token) → { subject, email?, wallet? } | null
+  → AuthVerifier.verify(token, identityToken, activeWallet) → { subject, email?, wallet? } | null
   → UserRepository.findByPrivyUserId(subject) → users 行
   → request.currentUser（Fastify 模块增强声明的字段）
   → requireRole(...) 比对 users.role
@@ -44,11 +44,11 @@ Authorization: Bearer <token>
 | --- | --- |
 | `AuthVerifier` | 只做「token → subject」，不碰数据库、不碰角色 |
 | `DemoAuthVerifier`（`AUTH_MODE=demo`，默认） | token 形如 `demo:<privy_user_id>`，取出 subject，不校验签名，仅限本地 |
-| `PrivyAuthVerifier`（`AUTH_MODE=privy`） | 用 `PRIVY_APP_ID` 对 access token 做 ES256 校验；若请求携带 `privy-id-token`，再校验 identity token 并读取已绑定钱包 |
+| `PrivyAuthVerifier`（`AUTH_MODE=privy`） | 用 `PRIVY_APP_ID` 对 access token 做 ES256 校验；若请求携带 `privy-id-token`，再校验 identity token；`x-active-wallet` 只有匹配签名载荷里的已绑定钱包才生效 |
 | `createAuthVerifier(env)` | 按 `AUTH_MODE` 选实现，凭证缺失时启动即失败，不静默降级成 demo |
 | `createAuthGuards(verifier, users)` | 产出 `requireUser`（401 `UNAUTHENTICATED`）与 `requireRole(...roles)`（403 `FORBIDDEN`）；仅允许后端验证过的管理员钱包触发管理员引导 |
 
-关键边界：**角色只从数据库 `users.role` 读**。verifier 交出经过签名校验的 subject，以及可选的 Privy identity token 钱包地址；请求头与请求体里的任何角色字段都不参与判权；
+关键边界：**角色只从数据库 `users.role` 读**。verifier 交出经过签名校验的 subject 与当前钱包；钱包提示请求头必须与签名 identity token 匹配，请求头与请求体里的任何角色字段都不直接参与判权；
 `creators` 里的 `role` 只表示「申请成为哪种创作者」，必须管理员通过后才在同一事务里传导到 `users.role`。
 换 verifier 不影响这条链路——`AUTH_MODE=privy` 接线时只替换第一步。
 
@@ -58,7 +58,7 @@ Authorization: Bearer <token>
 
 ```text
 routes/        HTTP 形状：zod 校验入参 → 调仓储 → presenters 出参
-  me.ts  creators.ts  admin-creators.ts  admin-courses.ts  teacher-courses.ts  courses.ts
+  me.ts  creators.ts  admin-creators.ts  admin-courses.ts  teacher-courses.ts  merchant-courses.ts  courses.ts
   schemas.ts     公共 zod 片段（uuid params、reason、钱包地址、http 链接）
   presenters.ts  对外视图（创作者申请只下发契约七字段，审核人等内部字段不出网）
 auth/          verifier.ts（可插拔校验）+ guards.ts（requireUser / requireRole）
@@ -76,13 +76,14 @@ domain/        course.ts / creator.ts / user.ts 纯类型
 | `CreatorRepository` | 创作者申请：提交、我的申请、按状态列表、通过、驳回 |
 | `AdminCourseRepository` | 课程审核队列：按状态列表、上架、驳回 |
 | `TeacherCourseRepository` | 教师自己的课程：列表、建草稿、提交审核 |
+| `MerchantCourseRepository` | 商家参与分账的课程：按 `merchant_id` 只读列表 |
 
-`createRepositories(env)` 按 `COURSE_DATA_SOURCE` 选实现：postgres 模式下五个仓储共用一个 `postgres()` 连接池；
-mock 模式下五个仓储共用一个 `MockDataStore`（users / creators / courses 三张内存表），
+`createRepositories(env)` 按 `COURSE_DATA_SOURCE` 选实现：postgres 模式下仓储共用一个 `postgres()` 连接池；
+mock 模式下仓储共用一个 `MockDataStore`（users / creators / courses 三张内存表），
 所以审核流转在 mock 下也能真实互相影响。管理端与教师端共享的读 SQL 收在 `postgres-managed-course.ts`。
 
-教师建课目前把 `courses.merchant_id` 也填成该教师的 `creators.id`（接口没有选商家这一步），
-商家分账要等商家侧能力落地后再改。
+教师建课目前把 `courses.merchant_id` 也填成该教师的 `creators.id`（接口没有选商家这一步）。商家中心已经能按
+`merchant_id` 查看既有分账课程并直接调用 CourseMarket 提取收益；新课选择独立商家的流程仍待实现。
 
 唯一约束冲突不靠字符串匹配报错：postgres 侧按 `constraint_name` 分类，抛 `RepositoryConflictError`
 （`DUPLICATE_APPLICATION` / `WALLET_TAKEN` / `DUPLICATE_SLUG`），`app.ts` 的错误处理统一映射成 409。
@@ -119,7 +120,8 @@ mock 模式下五个仓储共用一个 `MockDataStore`（users / creators / cour
 章节不再保存视频或原课程外链，学生在平台内点击完成按钮记录学习进度。
 API 的 `CourseSummary` 用于列表，`CourseDetail` 额外带一份按 `position` 升序的 `sections`。
 `courses.provider_x_url` 与 `course_sections.original_title` 由 002 补齐，postgres 模式下正常读写；
-教师新建课程时接口不收 `providerXUrl`，这类课程该字段为 `null`；章节不保存视频或原课程外链。
+教师新建课程时接口不收 `providerXUrl`，这类课程该字段为 `null`；章节不保存视频或原课程外链。课程的
+`merchant_id` 必须来自已审核 merchant，教师通过 `/api/teacher/merchants` 读取可选项，创建接口再次校验，不能把教师本人伪装成 20% 分账方。
 
 ## 课程 ID 映射
 

@@ -3,10 +3,12 @@ import { describe, it } from "node:test";
 
 import { buildApp } from "../src/app.js";
 import { createMockRepositories } from "../src/repositories/create-repositories.js";
+import { DEMO_MERCHANT_CREATOR_ID } from "../src/repositories/mock-data.js";
 import { MockDataStore } from "../src/repositories/mock-store.js";
 
 const STUDENT = "Bearer demo:demo-student";
 const TEACHER = "Bearer demo:demo-teacher";
+const MERCHANT = "Bearer demo:demo-merchant";
 const ADMIN = "Bearer demo:demo-admin";
 
 const teacherApplication = {
@@ -21,6 +23,7 @@ function buildTestApp() {
 
 function draft(slug: string) {
   return {
+    merchantId: DEMO_MERCHANT_CREATOR_ID,
     slug,
     title: "全栈 Web3 实战",
     summary: "从合约到前端跑通一条完整链路。",
@@ -79,6 +82,31 @@ describe("认证与角色", () => {
     await app.close();
   });
 
+  it("各角色只能访问自己的工作台接口", async () => {
+    const app = await buildTestApp();
+    const studentTeacherCourses = await app.inject({
+      method: "GET",
+      url: "/api/teacher/courses",
+      headers: { authorization: STUDENT },
+    });
+    const teacherMerchantCourses = await app.inject({
+      method: "GET",
+      url: "/api/merchant/courses",
+      headers: { authorization: TEACHER },
+    });
+    const merchantCourses = await app.inject({
+      method: "GET",
+      url: "/api/merchant/courses",
+      headers: { authorization: MERCHANT },
+    });
+
+    assert.equal(studentTeacherCourses.statusCode, 403);
+    assert.equal(teacherMerchantCourses.statusCode, 403);
+    assert.equal(merchantCourses.statusCode, 200);
+    assert.equal(merchantCourses.json().data.length, 3);
+    await app.close();
+  });
+
   it("/api/me 返回数据库里的角色与创作者申请", async () => {
     const app = await buildTestApp();
     const response = await app.inject({
@@ -97,6 +125,21 @@ describe("认证与角色", () => {
 });
 
 describe("创作者申请与审核", () => {
+  it("只有学生可以提交创作者申请", async () => {
+    const app = await buildTestApp();
+    for (const authorization of [TEACHER, MERCHANT, ADMIN]) {
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/creators/applications",
+        headers: { authorization },
+        payload: teacherApplication,
+      });
+      assert.equal(response.statusCode, 403);
+      assert.equal(response.json().error, "FORBIDDEN");
+    }
+    await app.close();
+  });
+
   it("学生申请教师并通过审核后角色升为 teacher", async () => {
     const app = await buildTestApp();
     const applied = await app.inject({
@@ -249,6 +292,25 @@ describe("创作者申请与审核", () => {
 });
 
 describe("课程上架流转", () => {
+  it("教师只能选择已审核商家作为课程分账方", async () => {
+    const app = await buildTestApp();
+    const merchants = await app.inject({ method: "GET", url: "/api/teacher/merchants", headers: { authorization: TEACHER } });
+    const forbidden = await app.inject({ method: "GET", url: "/api/teacher/merchants", headers: { authorization: MERCHANT } });
+    assert.equal(merchants.statusCode, 200);
+    assert.deepEqual(merchants.json().data.map((item: { id: string }) => item.id), [DEMO_MERCHANT_CREATOR_ID]);
+    assert.equal(forbidden.statusCode, 403);
+
+    const invalid = await app.inject({
+      method: "POST",
+      url: "/api/teacher/courses",
+      headers: { authorization: TEACHER },
+      payload: { ...draft("invalid-merchant"), merchantId: "20000000-0000-4000-8000-000000000001" },
+    });
+    assert.equal(invalid.statusCode, 400);
+    assert.equal(invalid.json().message, "请选择已审核通过的分账商家");
+    await app.close();
+  });
+
   it("未通过审核的教师建课返回 403", async () => {
     const app = await buildTestApp();
     await app.inject({
@@ -286,6 +348,7 @@ describe("课程上架流转", () => {
     });
     assert.equal(created.statusCode, 201);
     assert.equal(created.json().data.status, "draft");
+    assert.equal(created.json().data.merchantWallet.toLowerCase(), "0x283a754de403b0ee48560964f9f7c21491916499");
     const courseId = created.json().data.id;
 
     const submitted = await app.inject({
@@ -574,6 +637,91 @@ describe("外部身份提供方接入", () => {
     assert.equal(verified.statusCode, 200);
     assert.equal(verified.json().data.role, "admin");
     assert.equal(verified.json().data.primaryWallet, wallet);
+    await app.close();
+  });
+
+  it("经过 verifier 验证的钱包可以按配置映射为教师或商户", async () => {
+    const store = new MockDataStore();
+    const teacherWallet = "0xe1e5016af35dfd90ccb6bc03654d156b3f29764d";
+    const merchantWallet = "0x283a754de403b0ee48560964f9f7c21491916499";
+    const app = await buildApp({
+      repositories: createMockRepositories(store),
+      walletRoles: new Map([
+        [teacherWallet, "teacher"],
+        [merchantWallet, "merchant"],
+      ]),
+      authVerifier: {
+        autoProvision: true,
+        async verify(token: string) {
+          if (token === "teacher-jwt") return { subject: "did:privy:teacher", wallet: teacherWallet };
+          if (token === "merchant-jwt") return { subject: "did:privy:merchant", wallet: merchantWallet };
+          return null;
+        },
+      },
+    });
+
+    const teacher = await app.inject({ method: "GET", url: "/api/me", headers: { authorization: "Bearer teacher-jwt" } });
+    const merchant = await app.inject({ method: "GET", url: "/api/me", headers: { authorization: "Bearer merchant-jwt" } });
+
+    assert.equal(teacher.statusCode, 200);
+    assert.equal(teacher.json().data.role, "teacher");
+    assert.equal(teacher.json().data.creator.role, "teacher");
+    assert.equal(teacher.json().data.creator.reviewStatus, "approved");
+    assert.equal(merchant.statusCode, 200);
+    assert.equal(merchant.json().data.role, "merchant");
+    assert.equal(merchant.json().data.creator.role, "merchant");
+    assert.equal(merchant.json().data.creator.reviewStatus, "approved");
+
+    const teacherCourses = await app.inject({ method: "GET", url: "/api/teacher/courses", headers: { authorization: "Bearer teacher-jwt" } });
+    const merchantCourses = await app.inject({ method: "GET", url: "/api/merchant/courses", headers: { authorization: "Bearer merchant-jwt" } });
+    assert.equal(teacherCourses.statusCode, 200);
+    assert.equal(teacherCourses.json().data.length, 3);
+    assert.equal(merchantCourses.statusCode, 200);
+    assert.equal(merchantCourses.json().data.length, 3);
+    await app.close();
+  });
+
+  it("同一 Privy 账号切换已验证钱包时同步切换角色，离开映射钱包后不残留管理员权限", async () => {
+    const store = new MockDataStore();
+    const adminWallet = "0x934124d582dd6618309b0905b4de2631a2892eee";
+    const teacherWallet = "0xe1e5016af35dfd90ccb6bc03654d156b3f29764d";
+    const studentWallet = "0x1111111111111111111111111111111111111111";
+    const app = await buildApp({
+      repositories: createMockRepositories(store),
+      walletRoles: new Map([
+        [adminWallet, "admin"],
+        [teacherWallet, "teacher"],
+      ]),
+      authVerifier: {
+        autoProvision: true,
+        async verify(token: string, _identityToken?: string, requestedWallet?: string) {
+          return token === "shared-privy-jwt" && requestedWallet
+            ? { subject: "did:privy:shared", wallet: requestedWallet }
+            : null;
+        },
+      },
+    });
+
+    const readAs = (wallet: string) => app.inject({
+      method: "GET",
+      url: "/api/me",
+      headers: { authorization: "Bearer shared-privy-jwt", "x-active-wallet": wallet },
+    });
+    const admin = await readAs(adminWallet);
+    const staleAdminAttempt = await app.inject({
+      method: "GET",
+      url: "/api/admin/creators",
+      headers: { authorization: "Bearer shared-privy-jwt", "x-active-wallet": studentWallet },
+    });
+    const teacher = await readAs(teacherWallet);
+    const student = await readAs(studentWallet);
+
+    assert.equal(admin.json().data.role, "admin");
+    assert.equal(teacher.json().data.role, "teacher");
+    assert.equal(teacher.json().data.creator.role, "teacher");
+    assert.equal(student.json().data.role, "student");
+    assert.equal(student.json().data.primaryWallet, studentWallet);
+    assert.equal(staleAdminAttempt.statusCode, 403);
     await app.close();
   });
 });

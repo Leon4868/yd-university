@@ -22,6 +22,7 @@ export async function registerLearningRoutes(
   courses: CourseRepository,
   progress: ProgressRepository,
 ) {
+  const requireLearner = guards.requireRole("student", "teacher", "merchant");
   /** 只有已上架课程可学，未上架与不存在一律 404，不泄露存在性 */
   async function resolvePublished(slug: string, reply: FastifyReply): Promise<CourseDetail | null> {
     const course = await courses.findPublishedDetailBySlug(slug);
@@ -58,7 +59,7 @@ export async function registerLearningRoutes(
 
   app.get(
     "/api/learning/courses/:slug/progress",
-    { preHandler: guards.requireUser },
+    { preHandler: requireLearner },
     async (request, reply) => {
       const params = slugParamsSchema.safeParse(request.params);
       if (!params.success) {
@@ -74,13 +75,13 @@ export async function registerLearningRoutes(
 
   app.post(
     SECTION_PATH,
-    { preHandler: guards.requireUser },
+    { preHandler: requireLearner },
     sectionHandler((userId, sectionId) => progress.complete(userId, sectionId)),
   );
 
   app.delete(
     SECTION_PATH,
-    { preHandler: guards.requireUser },
+    { preHandler: requireLearner },
     sectionHandler((userId, sectionId) => progress.uncomplete(userId, sectionId)),
   );
 }

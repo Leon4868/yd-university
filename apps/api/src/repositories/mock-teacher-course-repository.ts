@@ -32,6 +32,10 @@ export class MockTeacherCourseRepository implements TeacherCourseRepository {
     if (!teacher) {
       throw new Error(`creator ${input.teacherId} not found`);
     }
+    const merchant = this.store.findCreator(input.merchantId);
+    if (!merchant || merchant.role !== "merchant" || merchant.reviewStatus !== "approved") {
+      throw new Error(`approved merchant ${input.merchantId} not found`);
+    }
     const sections = (input.sections ?? []).map((section, index) => ({
       id: randomUUID(),
       position: index + 1,
@@ -51,8 +55,7 @@ export class MockTeacherCourseRepository implements TeacherCourseRepository {
       teacherXHandle: null,
       teacherXUrl: null,
       teacherWallet: teacher.walletAddress,
-      // 暂无独立分销商家，收款商家默认落在教师自己的创作者身份上
-      merchantWallet: teacher.walletAddress,
+      merchantWallet: merchant.walletAddress,
       providerName: input.providerName ?? null,
       providerXUrl: null,
       courseUrl: input.courseUrl ?? null,
@@ -64,7 +67,7 @@ export class MockTeacherCourseRepository implements TeacherCourseRepository {
       coverTone: input.coverTone ?? "violet",
       sections,
       teacherId: teacher.id,
-      merchantId: teacher.id,
+      merchantId: merchant.id,
       submittedAt: null,
       reviewedBy: null,
       reviewedAt: null,

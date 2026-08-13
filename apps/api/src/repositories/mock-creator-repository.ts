@@ -32,6 +32,17 @@ export class MockCreatorRepository implements CreatorRepository {
     return approved ? { ...approved } : null;
   }
 
+  async findApprovedByWallet(walletAddress: string, role: CreatorRole): Promise<CreatorApplication | null> {
+    const normalized = walletAddress.toLowerCase();
+    const approved = this.store.creators.find(
+      (creator) =>
+        creator.role === role
+        && creator.reviewStatus === "approved"
+        && creator.walletAddress.toLowerCase() === normalized,
+    );
+    return approved ? { ...approved } : null;
+  }
+
   async apply(input: CreatorApplicationInput): Promise<CreatorApplication> {
     const existing = this.store.creators.find(
       (creator) => creator.userId === input.userId && creator.role === input.role,

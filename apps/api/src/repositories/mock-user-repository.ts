@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import type { User } from "../domain/user.js";
+import type { User, UserRole } from "../domain/user.js";
 import { MockDataStore } from "./mock-store.js";
 import type { ProvisionUserInput, UserRepository } from "./user-repository.js";
 
@@ -33,19 +33,19 @@ export class MockUserRepository implements UserRepository {
     return { ...created };
   }
 
-  async promoteToAdmin(userId: string): Promise<User> {
+  async setRole(userId: string, role: UserRole): Promise<User> {
     const user = this.store.users.find((item) => item.id === userId);
     if (!user) {
-      throw new Error("promoteToAdmin 未找到用户");
+      throw new Error("setRole 未找到用户");
     }
-    user.role = "admin";
+    user.role = role;
     return { ...user };
   }
 
   async updatePrimaryWallet(userId: string, primaryWallet: string): Promise<User> {
     const user = this.store.users.find((item) => item.id === userId);
     if (!user) throw new Error("updatePrimaryWallet 未找到用户");
-    user.primaryWallet ??= primaryWallet;
+    user.primaryWallet = primaryWallet;
     return { ...user };
   }
 }

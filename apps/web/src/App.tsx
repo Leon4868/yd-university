@@ -1,6 +1,8 @@
 import { Route, Routes } from "react-router-dom";
 
 import { AppShell } from "./components/AppShell.tsx";
+import { AccessBoundary } from "./auth/AccessBoundary.tsx";
+import { allRoles, creatorCenterRoles, learnerRoles } from "./auth/permissions.ts";
 import { AdminPage } from "./pages/AdminPage.tsx";
 import { CourseDetailPage } from "./pages/CourseDetailPage.tsx";
 import { CreatorPage } from "./pages/CreatorPage.tsx";
@@ -17,11 +19,11 @@ export function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/courses/:slug" element={<CourseDetailPage />} />
-        <Route path="/learn/:slug" element={<LearnPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/swap" element={<FeaturePage type="swap" />} />
-        <Route path="/creator" element={<CreatorPage />} />
-        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/learn/:slug" element={<AccessBoundary roles={learnerRoles}><LearnPage /></AccessBoundary>} />
+        <Route path="/profile" element={<AccessBoundary roles={allRoles}><ProfilePage /></AccessBoundary>} />
+        <Route path="/swap" element={<AccessBoundary roles={learnerRoles}><FeaturePage type="swap" /></AccessBoundary>} />
+        <Route path="/creator" element={<AccessBoundary roles={creatorCenterRoles}><CreatorPage /></AccessBoundary>} />
+        <Route path="/admin" element={<AccessBoundary roles={["admin"]}><AdminPage /></AccessBoundary>} />
         <Route path="*" element={<HomePage />} />
       </Routes>
     </AppShell>

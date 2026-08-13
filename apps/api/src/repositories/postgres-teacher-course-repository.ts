@@ -31,7 +31,7 @@ export class PostgresTeacherCourseRepository implements TeacherCourseRepository 
           ) VALUES (
             ${input.slug},
             ${input.teacherId},
-            ${input.teacherId},
+            ${input.merchantId},
             ${input.title},
             ${input.summary},
             ${input.category},

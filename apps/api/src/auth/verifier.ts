@@ -10,7 +10,7 @@ export interface VerifiedIdentity {
 }
 
 export interface AuthVerifier {
-  verify(token: string, identityToken?: string): Promise<VerifiedIdentity | null>;
+  verify(token: string, identityToken?: string, requestedWallet?: string): Promise<VerifiedIdentity | null>;
   /** 校验通过但库里没有该 subject 时，是否按学生自动建号。demo 模式不建，避免任意字符串开号 */
   readonly autoProvision: boolean;
 }
@@ -21,7 +21,7 @@ const DEMO_TOKEN_PREFIX = "demo:";
 export class DemoAuthVerifier implements AuthVerifier {
   readonly autoProvision = false;
 
-  async verify(token: string, _identityToken?: string): Promise<VerifiedIdentity | null> {
+  async verify(token: string, _identityToken?: string, _requestedWallet?: string): Promise<VerifiedIdentity | null> {
     if (!token.startsWith(DEMO_TOKEN_PREFIX)) {
       return null;
     }
@@ -50,7 +50,7 @@ export class PrivyAuthVerifier implements AuthVerifier {
     this.jwks = createRemoteJWKSet(jwksUrl(appId));
   }
 
-  async verify(token: string, identityToken?: string): Promise<VerifiedIdentity | null> {
+  async verify(token: string, identityToken?: string, requestedWallet?: string): Promise<VerifiedIdentity | null> {
     try {
       const { payload } = await jwtVerify(token, this.jwks, {
         issuer: PRIVY_ISSUER,
@@ -59,32 +59,48 @@ export class PrivyAuthVerifier implements AuthVerifier {
       });
       const subject = payload.sub?.trim();
       if (!subject) return null;
-      const wallet = identityToken ? await this.readWallet(subject, identityToken) : null;
-      return { subject, wallet: wallet ?? undefined };
+      if (requestedWallet && !/^0x[0-9a-fA-F]{40}$/.test(requestedWallet)) return null;
+      const walletResult = identityToken
+        ? await this.readWallet(subject, identityToken, requestedWallet)
+        : { valid: !requestedWallet, wallet: null };
+      if (!walletResult.valid) return null;
+      return { subject, wallet: walletResult.wallet ?? undefined };
     } catch {
       // 签名、过期、issuer/audience 不匹配都归为「凭证无效」，不区分原因以免探测
       return null;
     }
   }
 
-  private async readWallet(subject: string, identityToken: string): Promise<string | null> {
+  private async readWallet(
+    subject: string,
+    identityToken: string,
+    requestedWallet?: string,
+  ): Promise<{ valid: boolean; wallet: string | null }> {
     try {
       const { payload } = await jwtVerify(identityToken, this.jwks, {
         issuer: PRIVY_ISSUER,
         audience: this.appId,
         algorithms: ["ES256"],
       });
-      if (payload.sub !== subject || typeof payload.linked_accounts !== "string") return null;
+      if (payload.sub !== subject || typeof payload.linked_accounts !== "string") {
+        return { valid: false, wallet: null };
+      }
       const linkedAccounts: unknown = JSON.parse(payload.linked_accounts);
-      if (!Array.isArray(linkedAccounts)) return null;
-      const account = linkedAccounts.find((item) => {
-        if (typeof item !== "object" || item === null) return false;
+      if (!Array.isArray(linkedAccounts)) return { valid: false, wallet: null };
+      const wallets = linkedAccounts.flatMap((item) => {
+        if (typeof item !== "object" || item === null) return [];
         const value = item as { type?: unknown; address?: unknown };
-        return value.type === "wallet" && typeof value.address === "string" && /^0x[0-9a-fA-F]{40}$/.test(value.address);
-      }) as { address: string } | undefined;
-      return account?.address ?? null;
+        return value.type === "wallet" && typeof value.address === "string" && /^0x[0-9a-fA-F]{40}$/.test(value.address)
+          ? [value.address]
+          : [];
+      });
+      if (requestedWallet) {
+        const matched = wallets.find((wallet) => wallet.toLowerCase() === requestedWallet.toLowerCase());
+        return matched ? { valid: true, wallet: matched } : { valid: false, wallet: null };
+      }
+      return { valid: true, wallet: wallets[0] ?? null };
     } catch {
-      return null;
+      return { valid: false, wallet: null };
     }
   }
 }

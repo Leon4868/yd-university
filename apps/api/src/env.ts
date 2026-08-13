@@ -17,6 +17,8 @@ const envSchema = z
     BOOTSTRAP_ADMIN_SUBJECTS: z.string().default(""),
     /** 逗号分隔的钱包白名单，必须来自已验证的 Privy identity token */
     BOOTSTRAP_ADMIN_WALLETS: z.string().default(""),
+    /** address=role 逗号分隔映射，role 为 student/teacher/merchant/admin */
+    WALLET_ROLE_MAPPINGS: z.string().default(""),
   })
   .superRefine((value, context) => {
     if (value.COURSE_DATA_SOURCE === "postgres" && !value.DATABASE_URL) {

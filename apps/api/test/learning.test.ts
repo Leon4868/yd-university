@@ -78,6 +78,18 @@ describe("学习进度", () => {
     await app.close();
   });
 
+  it("管理员不能写入或读取学员进度", async () => {
+    const app = await buildLearningApp();
+    const response = await app.inject({
+      method: "GET",
+      url: progressUrl(),
+      headers: { authorization: "Bearer demo:demo-admin" },
+    });
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json().error, "FORBIDDEN");
+    await app.close();
+  });
+
   it("未上架课程返回 404", async () => {
     const app = await buildLearningApp();
     const headers = { authorization: STUDENT };

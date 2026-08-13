@@ -35,6 +35,7 @@ export interface ManagedCourseFilter {
   id?: string;
   status?: CourseSummary["status"];
   teacherId?: string;
+  merchantId?: string;
 }
 
 /** 管理端与教师端共用同一条读 SQL，事务内外都能复用 */
@@ -45,6 +46,7 @@ export async function queryManagedCourses(
   const id = filter.id ?? null;
   const status = filter.status ?? null;
   const teacherId = filter.teacherId ?? null;
+  const merchantId = filter.merchantId ?? null;
   const rows = await sql<ManagedCourseRow[]>`
     SELECT
       c.id,
@@ -79,6 +81,7 @@ export async function queryManagedCourses(
     WHERE (${id}::uuid IS NULL OR c.id = ${id}::uuid)
       AND (${status}::text IS NULL OR c.status::text = ${status}::text)
       AND (${teacherId}::uuid IS NULL OR c.teacher_id = ${teacherId}::uuid)
+      AND (${merchantId}::uuid IS NULL OR c.merchant_id = ${merchantId}::uuid)
     ORDER BY c.created_at DESC
   `;
   return rows.map(mapManagedCourseRow);

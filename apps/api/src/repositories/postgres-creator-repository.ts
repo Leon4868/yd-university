@@ -65,6 +65,21 @@ export class PostgresCreatorRepository implements CreatorRepository {
     return row ? mapCreatorRow(row) : null;
   }
 
+  async findApprovedByWallet(walletAddress: string, role: CreatorRole): Promise<CreatorApplication | null> {
+    const rows = await this.sql<CreatorRow[]>`
+      SELECT
+        id, user_id, role, display_name, wallet_address,
+        review_status, rejection_reason, reviewed_by, reviewed_at, verified_at, created_at
+      FROM creators
+      WHERE lower(wallet_address) = lower(${walletAddress})
+        AND role = ${role}
+        AND review_status = 'approved'
+      LIMIT 1
+    `;
+    const row = rows[0];
+    return row ? mapCreatorRow(row) : null;
+  }
+
   async apply(input: CreatorApplicationInput): Promise<CreatorApplication> {
     let rows: CreatorRow[];
     try {

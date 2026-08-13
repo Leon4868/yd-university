@@ -48,16 +48,16 @@ export class PostgresUserRepository implements UserRepository {
     return mapUserRow(row);
   }
 
-  async promoteToAdmin(userId: string): Promise<User> {
+  async setRole(userId: string, role: UserRole): Promise<User> {
     const rows = await this.sql<UserRow[]>`
       UPDATE users
-      SET role = 'admin', updated_at = now()
+      SET role = ${role}, updated_at = now()
       WHERE id = ${userId}
       RETURNING id, privy_user_id, username, avatar_url, primary_wallet, role
     `;
     const row = rows[0];
     if (!row) {
-      throw new Error("promoteToAdmin 未找到用户");
+      throw new Error("setRole 未找到用户");
     }
     return mapUserRow(row);
   }
@@ -65,7 +65,7 @@ export class PostgresUserRepository implements UserRepository {
   async updatePrimaryWallet(userId: string, primaryWallet: string): Promise<User> {
     const rows = await this.sql<UserRow[]>`
       UPDATE users
-      SET primary_wallet = COALESCE(primary_wallet, ${primaryWallet}), updated_at = now()
+      SET primary_wallet = ${primaryWallet}, updated_at = now()
       WHERE id = ${userId}
       RETURNING id, privy_user_id, username, avatar_url, primary_wallet, role
     `;

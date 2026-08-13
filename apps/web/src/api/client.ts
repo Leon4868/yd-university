@@ -14,6 +14,18 @@ import type {
 
 const rawBaseUrl: string = import.meta.env.VITE_API_BASE_URL ?? "";
 const baseUrl = rawBaseUrl.trim().replace(/\/+$/, "");
+let activeIdentity: { identityToken: string | null; activeWallet: string | null } = {
+  identityToken: null,
+  activeWallet: null,
+};
+
+/** 单页应用只有一个登录会话；所有受保护请求都携带同一份已验证当前钱包上下文 */
+export function setApiIdentity(identityToken: string | null, activeWallet: string | null) {
+  activeIdentity = {
+    identityToken,
+    activeWallet: identityToken ? activeWallet : null,
+  };
+}
 
 /** 契约错误形状 { error, message } 映射成带 code 的异常，UI 按 code 分支 */
 export class ApiError extends Error {
@@ -42,6 +54,7 @@ export function apiErrorMessage(error: unknown, fallback = "请求失败，请�
 interface RequestOptions {
   token?: string | null;
   identityToken?: string | null;
+  activeWallet?: string | null;
   body?: unknown;
   query?: Record<string, string | undefined>;
   signal?: AbortSignal;
@@ -73,7 +86,10 @@ function buildUrl(path: string, query?: Record<string, string | undefined>) {
 async function request<T>(method: string, path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {};
   if (options.token) headers.Authorization = `Bearer ${options.token}`;
-  if (options.identityToken) headers["privy-id-token"] = options.identityToken;
+  const identityToken = options.identityToken ?? (options.token ? activeIdentity.identityToken : null);
+  const activeWallet = options.activeWallet ?? (options.token ? activeIdentity.activeWallet : null);
+  if (identityToken) headers["privy-id-token"] = identityToken;
+  if (identityToken && activeWallet) headers["x-active-wallet"] = activeWallet;
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   let response: Response;
   try {
@@ -103,8 +119,8 @@ async function request<T>(method: string, path: string, options: RequestOptions 
 }
 
 // 身份
-export function getMe(token: string, signal?: AbortSignal, identityToken?: string | null) {
-  return request<CurrentUser>("GET", "/api/me", { token, identityToken, signal });
+export function getMe(token: string, signal?: AbortSignal, identityToken?: string | null, activeWallet?: string | null) {
+  return request<CurrentUser>("GET", "/api/me", { token, identityToken, activeWallet, signal });
 }
 
 // 创作者申请
@@ -145,6 +161,14 @@ export function rejectCourse(token: string, id: string, reason: string) {
 // 教师：我的课程
 export function listTeacherCourses(token: string, signal?: AbortSignal) {
   return request<ManagedCourse[]>("GET", "/api/teacher/courses", { token, signal });
+}
+
+export function listApprovedMerchants(token: string, signal?: AbortSignal) {
+  return request<CreatorApplication[]>("GET", "/api/teacher/merchants", { token, signal });
+}
+
+export function listMerchantCourses(token: string, signal?: AbortSignal) {
+  return request<ManagedCourse[]>("GET", "/api/merchant/courses", { token, signal });
 }
 
 export function createTeacherCourse(token: string, input: CourseDraftInput) {

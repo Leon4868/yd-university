@@ -1,4 +1,4 @@
-import type { User } from "../domain/user.js";
+import type { User, UserRole } from "../domain/user.js";
 
 export interface ProvisionUserInput {
   privyUserId: string;
@@ -12,6 +12,6 @@ export interface UserRepository {
   provision(input: ProvisionUserInput): Promise<User>;
   /** 同步经 Privy identity token 验证过的钱包归属 */
   updatePrimaryWallet(userId: string, primaryWallet: string): Promise<User>;
-  /** 把 env 白名单里的账号落成管理员，返回更新后的用户 */
-  promoteToAdmin(userId: string): Promise<User>;
+  /** 把经过后端验证的钱包映射到配置角色，返回更新后的用户 */
+  setRole(userId: string, role: UserRole): Promise<User>;
 }

@@ -1,7 +1,7 @@
 # YD University
 
 YD University 是一个“中心化教务系统 + 链上支付与证书”的学习型全栈 DApp。
-课程、视频、评论和进度保存在 PostgreSQL；YD 支付、购买凭证、自动分账和不可转让证书由 Ethereum Sepolia 合约负责。
+课程、章节、评论和进度保存在 PostgreSQL；YD 支付、购买凭证、自动分账和不可转让证书由 Ethereum Sepolia 合约负责。
 
 ## 当前可运行范围
 
@@ -10,16 +10,16 @@ YD University 是一个“中心化教务系统 + 链上支付与证书”的学
 - `apps/api/`：Fastify API，默认使用内置演示数据；也可切换 PostgreSQL。
   - 公开课程：`GET /api/courses`、`GET /api/courses/:slug`，只暴露 `status = 'published'` 的课程，
     未上架课程访问详情返回 404 `COURSE_NOT_FOUND`。
-  - 审核流已打通：`/api/me`、创作者申请、管理员审核教师/商家、管理员课程上架、教师建课与提交审核，
+  - 审核流已打通：`/api/me`、创作者申请、管理员审核教师/商家、管理员课程上架、教师建课与提交审核、商家分账课程读取，
     端点清单见 `docs/api-contract.md`。角色只认数据库 `users.role`，请求头/请求体里的角色声明一律忽略。
   - 认证可插拔：`AUTH_MODE=demo`（默认）用 `demo:<privy_user_id>` 令牌本地联调；`AUTH_MODE=privy`
     校验真实 Privy 访问令牌（ES256，公钥取自该 App 的 JWKS），只需要 `PRIVY_APP_ID`。按钱包引导管理员时，
     还需在 Privy 控制台开启 identity token，并在 API 的 `BOOTSTRAP_ADMIN_WALLETS` 配置公开钱包地址。
 - `apps/web/`：按 Stitch 设计系统实现的 React 页面，包含首页、课程购买、学习页和个人中心；
-  课程详情与学习页渲染真实小节并外链原课程。
+  课程详情与学习页渲染真实小节，章节不再提供视频或外链，学生点击完成即可累计进度。
   **`/admin` 管理员工作台与 `/creator` 创作者中心已是接真实接口的页面，不再是占位。**
-  管理后台入口只对 `role = admin` 显示，页面内部再判一次权限；创作者中心覆盖申请、待审、驳回重提、
-  教师建草稿与提交审核。
+  页面入口与路由按角色统一控制，服务端接口再做一次强制鉴权；学生看到入驻申请，教师看到课程与 70% 分账，
+  商家看到参与分账课程与 20% 分账，管理员只看到审核工作台。链上分账支持读取 `pendingWithdrawals` 与 `withdraw`。
 - `apps/api/migrations/`：`001_initial.sql` 建基线表，`002_review_workflow.sql` 增加角色枚举与教师/课程审核字段，
   `003_creator_identity.sql` 给 `creators` 加 `user_id` 与「同一用户同一 role 只留一条申请」的部分唯一索引。
 - `docs/`：冻结需求（v0.2）与架构边界。
@@ -35,6 +35,9 @@ YD University 是一个“中心化教务系统 + 链上支付与证书”的学
 - 四个角色：**学生 / 教师 / 商家 / 管理员**，注册后默认是学生。
 - **教师需要管理员审核通过后才能开课。**
 - **课程需要管理员审核上架后才对外可见，也才允许上链 `createCourse`。**
+- 角色权限矩阵：学生可学习/购买/申请入驻；教师可学习/购买/管理自己的课程/提取教师分账；商家可学习/购买/查看分账课程/提取商家分账；管理员负责入驻与课程审核。
+- 教师新建课程时必须选择一个已审核商家作为 20% 分账方；商家中心只展示 `merchant_id` 属于当前商家的课程。
+- 同一 Privy 用户切换 MetaMask 当前账号时，前端会提交当前钱包提示；后端只在该地址存在于已签名 identity token 时采用它，并同步角色与主钱包，离开映射钱包后不会残留管理员权限。
 - 完整流转图见 `docs/requirements.md` 的「角色与审核流」。
 
 ## 第一次启动
@@ -74,7 +77,7 @@ npm run dev:web
 | --- | --- | --- | --- |
 | 学生 | `Bearer demo:demo-student` | `student` | 无 |
 | 教师 | `Bearer demo:demo-teacher` | `teacher` | teacher，已通过，持有 3 门演示课程 |
-| 商家 | `Bearer demo:demo-merchant` | `merchant` | merchant，已通过 |
+| 商家 | `Bearer demo:demo-merchant` | `merchant` | merchant，已通过，可查看 3 门分账课程 |
 | 管理员 | `Bearer demo:demo-admin` | `admin` | 无 |
 
 ### curl 走一遍：学生 → 教师 → 建课 → 上架
@@ -243,7 +246,7 @@ npm run chain:smoke -w @yd/contracts
 - DeFi 核心原理与协议拆解（Uniswap V2 源码精讲）—— Tasuku Nakamura，14 节，<https://updraft.cyfrin.io/courses/uniswap-v2>
 - 智能合约安全：从攻击到防御 —— Patrick Collins，9 节，<https://updraft.cyfrin.io/courses/security>
 
-仓库只保存标题、简介、小节标题与外链，不转存视频或讲义正文，前端点击小节会跳转到原课程页面。
+仓库只保存标题、简介、小节标题与课程级来源说明，不转存视频或讲义正文；章节仅用于记录完成状态，不会跳转到外部页面。
 这些**只是演示数据，版权归原作者与 Cyfrin Updraft 所有**；课程价格、评分、学习人数为演示用虚构值，原课程本身免费。
 详见 `docs/requirements.md` 的「课程内容来源」。
 
@@ -273,6 +276,10 @@ npm run chain:smoke -w @yd/contracts
    ```
 
    白名单只在服务端生效，命中后会把 `users.role` 落库为 `admin`；请求头与请求体依旧无法影响角色。
+
+   如果要给测试钱包固定角色，可配置 `WALLET_ROLE_MAPPINGS=0x...=teacher,0x...=merchant`。
+   未映射钱包首次登录默认是学生；教师/商户映射会跳过申请审核，仅建议用于测试账号。同一 Privy 会话切换账号时，
+   当前钱包必须出现在签名有效的 identity token 中，普通请求头不能伪造角色。
 
 4. mock 模式的数据不持久化，重启即回到初始状态。要让账号和审核结果留存，
    同时设 `COURSE_DATA_SOURCE=postgres` 并执行 `001`~`003` 三个 migration。

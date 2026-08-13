@@ -58,10 +58,34 @@ export const courseMarketAbi = [
   },
   {
     type: "function",
+    name: "pendingWithdrawals",
+    stateMutability: "view",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [{ name: "amount", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "withdraw",
+    stateMutability: "nonpayable",
+    inputs: [],
+    outputs: [],
+  },
+  {
+    type: "function",
     name: "hasPurchased",
     stateMutability: "view",
     inputs: [{ name: "courseId", type: "uint256" }, { name: "student", type: "address" }],
     outputs: [{ name: "", type: "bool" }],
+  },
+] as const;
+
+export const courseCertificateAbi = [
+  {
+    type: "function",
+    name: "certificateOf",
+    stateMutability: "view",
+    inputs: [{ name: "courseId", type: "uint256" }, { name: "student", type: "address" }],
+    outputs: [{ name: "tokenId", type: "uint256" }],
   },
 ] as const;
 
