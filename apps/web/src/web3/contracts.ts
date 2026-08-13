@@ -14,6 +14,8 @@ export const contractAddresses = {
   courseMarket: readAddress("VITE_COURSE_MARKET_ADDRESS"),
   courseCertificate: readAddress("VITE_COURSE_CERTIFICATE_ADDRESS"),
   completionReceiver: readAddress("VITE_COMPLETION_RECEIVER_ADDRESS"),
+  uniswapRouter: readAddress("VITE_UNISWAP_ROUTER_ADDRESS"),
+  weth: readAddress("VITE_WETH_ADDRESS"),
 };
 
 export const hasSepoliaContractConfig = Boolean(
@@ -23,6 +25,33 @@ export const hasSepoliaContractConfig = Boolean(
   && contractAddresses.courseMarket
   && contractAddresses.courseCertificate,
 );
+
+/** 兑换是可选能力：没配 router/WETH 时前端只是不提供兑换，不影响购买已有 YD 的流程 */
+export const hasSwapConfig = Boolean(
+  hasSepoliaContractConfig && contractAddresses.uniswapRouter && contractAddresses.weth,
+);
+
+export const uniswapRouterAbi = [
+  {
+    type: "function",
+    name: "getAmountsIn",
+    stateMutability: "view",
+    inputs: [{ name: "amountOut", type: "uint256" }, { name: "path", type: "address[]" }],
+    outputs: [{ name: "amounts", type: "uint256[]" }],
+  },
+  {
+    type: "function",
+    name: "swapETHForExactTokens",
+    stateMutability: "payable",
+    inputs: [
+      { name: "amountOut", type: "uint256" },
+      { name: "path", type: "address[]" },
+      { name: "to", type: "address" },
+      { name: "deadline", type: "uint256" },
+    ],
+    outputs: [{ name: "amounts", type: "uint256[]" }],
+  },
+] as const;
 
 export const ydTokenAbi = [
   {

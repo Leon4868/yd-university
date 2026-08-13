@@ -1,13 +1,15 @@
 import { BookOpenCheck, Check, ChevronRight, CircleDollarSign, ExternalLink, ShieldCheck, Star, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext.tsx";
 import { can } from "../auth/permissions.ts";
 import { PanelState } from "../components/PanelState.tsx";
 import { courses, formatDuration, type Course } from "../data/courses.ts";
-import { approveCourse, buyCourse, readPurchaseState } from "../web3/purchase.ts";
-import { hasSepoliaContractConfig, SEPOLIA_CHAIN_ID, sepoliaTransactionUrl } from "../web3/contracts.ts";
+import { approveCourse, buyCourse, InsufficientYdError, readPurchaseState } from "../web3/purchase.ts";
+import { shortfallYd } from "../web3/swap.ts";
+import { bumpChainRevision, getChainRevision, subscribeChainRevision } from "../web3/chainState.ts";
+import { hasSepoliaContractConfig, hasSwapConfig, SEPOLIA_CHAIN_ID, sepoliaTransactionUrl } from "../web3/contracts.ts";
 
 type PurchaseStep = "approve" | "buy" | "complete";
 
@@ -25,14 +27,23 @@ function CourseDetail({ course }: { course: Course }) {
   const [purchaseStep, setPurchaseStep] = useState<PurchaseStep>("approve");
   const [busy, setBusy] = useState(false);
   const [ydBalance, setYdBalance] = useState<string | null>(null);
+  // null 表示还没读到链上余额，此时不提前判定为不足
+  const [sufficient, setSufficient] = useState<boolean | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [approveTx, setApproveTx] = useState<string | null>(null);
   const [buyTx, setBuyTx] = useState<string | null>(null);
+  // 授权/购买进行到哪一步，仅用于按钮文案
+  const [stage, setStage] = useState<"approve" | "buy" | null>(null);
   const canPurchase = can(auth.role, "purchase");
+  const chainRevision = useSyncExternalStore(subscribeChainRevision, getChainRevision, getChainRevision);
+  // YD 不够时不替用户决定兑换数量，引导到兑换页自行决定
+  const needsSwap = canPurchase && sufficient === false;
+  const swapHref = `/swap?need=${encodeURIComponent(shortfallYd(ydBalance, String(course.priceYD)))}&from=${encodeURIComponent(course.slug)}`;
   useEffect(() => {
     const chainCourseId = course.chainCourseId;
     if (!chainCourseId || !auth.authenticated || !canPurchase || !auth.getEthereumProvider || !hasSepoliaContractConfig) {
       setYdBalance(null);
+      setSufficient(null);
       return;
     }
     let cancelled = false;
@@ -41,13 +52,14 @@ function CourseDetail({ course }: { course: Course }) {
       .then((state) => {
         if (cancelled) return;
         setYdBalance(state.balance);
+        setSufficient(state.sufficient);
         setPurchaseStep(state.purchased ? "complete" : state.allowance > 0n ? "buy" : "approve");
       })
       .catch((error: unknown) => {
         if (!cancelled) setActionError(error instanceof Error ? error.message : "读取链上购买状态失败");
       });
     return () => { cancelled = true; };
-  }, [auth.authenticated, auth.getEthereumProvider, canPurchase, course.chainCourseId, course.priceYD]);
+  }, [auth.authenticated, auth.getEthereumProvider, canPurchase, chainRevision, course.chainCourseId, course.priceYD]);
 
   const actionLabel = !course.chainCourseId
     ? "课程尚未上链"
@@ -60,7 +72,7 @@ function CourseDetail({ course }: { course: Course }) {
       : !auth.authenticated
         ? "登录后购买"
         : busy
-          ? "等待钱包确认…"
+          ? stage === "buy" ? "购买中…" : "等待钱包确认…"
           : purchaseStep === "approve"
             ? `授权 ${course.priceYD} YD`
             : purchaseStep === "buy"
@@ -81,24 +93,36 @@ function CourseDetail({ course }: { course: Course }) {
       setActionError("当前登录账号没有可用的 EVM 钱包，请使用钱包登录或先在 Privy 中连接钱包");
       return;
     }
+    if (sufficient === false) {
+      setActionError(`当前钱包 YD 余额不足，购买该课程需要 ${course.priceYD} YD，请先前往兑换页兑换`);
+      return;
+    }
     setBusy(true);
     setActionError(null);
     try {
       await auth.switchEthereumChain(SEPOLIA_CHAIN_ID);
       const provider = await auth.getEthereumProvider();
-      if (purchaseStep === "approve") {
-        const hash = await approveCourse(provider, String(course.priceYD));
-        if (hash) setApproveTx(hash);
-        setPurchaseStep("buy");
-      } else if (purchaseStep === "buy") {
-        const hash = await buyCourse(provider, course.chainCourseId, String(course.priceYD));
-        setBuyTx(hash);
-        setPurchaseStep("complete");
-      }
+      // 每一步都先查链上真实状态，所以中途失败后再点一次会从断点继续，不会重复交易
+      setStage("approve");
+      const approveHash = await approveCourse(provider, String(course.priceYD));
+      if (approveHash) setApproveTx(approveHash);
+      setPurchaseStep("buy");
+      setStage("buy");
+      const buyHash = await buyCourse(provider, course.chainCourseId, String(course.priceYD));
+      setBuyTx(buyHash);
+      setPurchaseStep("complete");
+      // 购买会扣减 YD 并解锁「我的学习」，通知常驻组件重新读链
+      bumpChainRevision();
     } catch (error: unknown) {
+      // 授权前的余额复查失败时同步 UI 状态，避免按钮仍可点
+      if (error instanceof InsufficientYdError) {
+        setYdBalance(error.balance);
+        setSufficient(false);
+      }
       setActionError(error instanceof Error ? error.message : "链上交易失败，请稍后重试");
     } finally {
       setBusy(false);
+      setStage(null);
     }
   };
 
@@ -120,13 +144,21 @@ function CourseDetail({ course }: { course: Course }) {
             <div className={purchaseStep !== "approve" ? "done" : "active"}><span>{purchaseStep !== "approve" ? <Check size={15} /> : "1"}</span><div><strong>授权 YD</strong><small>允许 CourseMarket 使用 {course.priceYD} YD</small></div></div>
             <div className={purchaseStep === "complete" ? "done" : purchaseStep === "buy" ? "active" : ""}><span>{purchaseStep === "complete" ? <Check size={15} /> : "2"}</span><div><strong>购买课程</strong><small>链上记录购买与分账</small></div></div>
           </div>
-          {purchaseStep === "complete" && canPurchase ? <Link to={`/learn/${course.slug}`} className="button primary full">开始学习<ChevronRight size={18} /></Link> : <button className="button primary full" type="button" disabled={!course.chainCourseId || !hasSepoliaContractConfig || busy || (auth.authenticated && !canPurchase) || (auth.demoMode && !auth.getEthereumProvider)} onClick={() => void handlePurchase()}>{actionLabel}<ChevronRight size={18} /></button>}
+          {purchaseStep === "complete" && canPurchase ? <Link to={`/learn/${course.slug}`} className="button primary full">开始学习<ChevronRight size={18} /></Link>
+          : needsSwap ? <Link to={swapHref} className="button primary full">YD 不足，去兑换<ChevronRight size={18} /></Link>
+          : <button className="button primary full" type="button" disabled={!course.chainCourseId || !hasSepoliaContractConfig || busy || (auth.authenticated && !canPurchase) || (auth.demoMode && !auth.getEthereumProvider)} onClick={() => void handlePurchase()}>{actionLabel}<ChevronRight size={18} /></button>}
           <p className="purchase-help">{course.chainCourseId ? "授权与购买由当前登录钱包在 Ethereum Sepolia 上签名，交易确认后才能进入学习。" : "该课程还没有绑定 Sepolia CourseRegistry 课程，暂不能购买。"}</p>
           {actionError && <p className="inline-alert">{actionError}</p>}
           {approveTx && <a className="explorer-link" href={sepoliaTransactionUrl(approveTx)} target="_blank" rel="noreferrer">查看授权交易<ExternalLink size={14} /></a>}
           {buyTx && <a className="explorer-link" href={sepoliaTransactionUrl(buyTx)} target="_blank" rel="noreferrer">查看购买交易<ExternalLink size={14} /></a>}
           <div className="split-card"><div><CircleDollarSign size={18} /><strong>收益自动分配</strong></div><div className="split-bar"><i /><i /><i /></div><ul><li><span>教师 70%</span><strong>{formatShare(course.priceYD, 70)} YD</strong></li><li><span>商家 20%</span><strong>{formatShare(course.priceYD, 20)} YD</strong></li><li><span>平台 10%</span><strong>{formatShare(course.priceYD, 10)} YD</strong></li></ul></div>
-          <p className="purchase-help">YD 兑换尚未开放，请使用当前钱包已有的 Sepolia 测试 YD。</p>
+          <p className="purchase-help">{!hasSwapConfig
+            ? "YD 兑换尚未配置，请使用当前钱包已有的 Sepolia 测试 YD。"
+            : sufficient === false
+              ? `购买该课程需要 ${course.priceYD} YD，当前余额不足。可前往兑换页用 ETH 兑换任意数量的 YD，兑换完成后回到本页购买。`
+              : sufficient === true
+                ? "YD 余额充足，无需兑换。"
+                : "连接钱包后会读取 YD 余额，不足时可用 ETH 自动兑换。"}</p>
           <a className="explorer-link" href="https://sepolia.etherscan.io" target="_blank" rel="noreferrer">在 Sepolia Explorer 查看<ExternalLink size={14} /></a>
         </aside>
       </div>

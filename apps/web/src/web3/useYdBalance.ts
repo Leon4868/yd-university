@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { useAuth } from "../auth/AuthContext.tsx";
+import { getChainRevision, subscribeChainRevision } from "./chainState.ts";
 import { hasSepoliaContractConfig } from "./contracts.ts";
 import { readYdBalance } from "./purchase.ts";
 
@@ -12,6 +13,7 @@ export interface YdBalanceState {
 
 export function useYdBalance(): YdBalanceState {
   const auth = useAuth();
+  const revision = useSyncExternalStore(subscribeChainRevision, getChainRevision, getChainRevision);
   const [state, setState] = useState<YdBalanceState>({ balance: null, loading: false, error: null });
 
   useEffect(() => {
@@ -32,7 +34,7 @@ export function useYdBalance(): YdBalanceState {
         }
       });
     return () => { cancelled = true; };
-  }, [auth.authenticated, auth.demoMode, auth.getEthereumProvider, auth.walletReady]);
+  }, [auth.authenticated, auth.demoMode, auth.getEthereumProvider, auth.walletReady, revision]);
 
   return state;
 }

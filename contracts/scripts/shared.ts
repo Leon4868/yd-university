@@ -55,6 +55,64 @@ export type CourseRecord = readonly [
   metadataURI?: string;
 };
 
+/**
+ * Uniswap V2 在 Sepolia 的官方部署。这三个地址已通过链上校验：
+ * router.factory() 与 router.WETH() 分别等于下面的 factory / weth。
+ */
+export const UNISWAP_SEPOLIA = {
+  router: "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3",
+  factory: "0xF62c03E08ada871A0bEb309762E260a7a6a880E6",
+  weth: "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+} as const;
+
+export const uniswapRouterAbi = [
+  { type: "function", name: "factory", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+  { type: "function", name: "WETH", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+  {
+    type: "function",
+    name: "addLiquidityETH",
+    stateMutability: "payable",
+    inputs: [
+      { name: "token", type: "address" },
+      { name: "amountTokenDesired", type: "uint256" },
+      { name: "amountTokenMin", type: "uint256" },
+      { name: "amountETHMin", type: "uint256" },
+      { name: "to", type: "address" },
+      { name: "deadline", type: "uint256" },
+    ],
+    outputs: [
+      { name: "amountToken", type: "uint256" },
+      { name: "amountETH", type: "uint256" },
+      { name: "liquidity", type: "uint256" },
+    ],
+  },
+] as const;
+
+export const uniswapFactoryAbi = [
+  {
+    type: "function",
+    name: "getPair",
+    stateMutability: "view",
+    inputs: [{ type: "address" }, { type: "address" }],
+    outputs: [{ type: "address" }],
+  },
+] as const;
+
+export const uniswapPairAbi = [
+  {
+    type: "function",
+    name: "getReserves",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [
+      { name: "reserve0", type: "uint112" },
+      { name: "reserve1", type: "uint112" },
+      { name: "blockTimestampLast", type: "uint32" },
+    ],
+  },
+  { type: "function", name: "token0", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+] as const;
+
 export function asAddress(value: string, label: string): Address {
   assert.ok(isAddress(value), `${label} is not a valid address: ${value}`);
   return getAddress(value);

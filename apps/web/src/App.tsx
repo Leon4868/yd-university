@@ -6,7 +6,7 @@ import { allRoles, creatorCenterRoles, learnerRoles } from "./auth/permissions.t
 import { AdminPage } from "./pages/AdminPage.tsx";
 import { CourseDetailPage } from "./pages/CourseDetailPage.tsx";
 import { CreatorPage } from "./pages/CreatorPage.tsx";
-import { FeaturePage } from "./pages/FeaturePage.tsx";
+import { SwapPage } from "./pages/SwapPage.tsx";
 import { HomePage } from "./pages/HomePage.tsx";
 import { LearnPage } from "./pages/LearnPage.tsx";
 import { LoginPage } from "./pages/LoginPage.tsx";
@@ -21,7 +21,7 @@ export function App() {
         <Route path="/courses/:slug" element={<CourseDetailPage />} />
         <Route path="/learn/:slug" element={<AccessBoundary roles={learnerRoles}><LearnPage /></AccessBoundary>} />
         <Route path="/profile" element={<AccessBoundary roles={allRoles}><ProfilePage /></AccessBoundary>} />
-        <Route path="/swap" element={<AccessBoundary roles={learnerRoles}><FeaturePage type="swap" /></AccessBoundary>} />
+        <Route path="/swap" element={<AccessBoundary roles={learnerRoles}><SwapPage /></AccessBoundary>} />
         <Route path="/creator" element={<AccessBoundary roles={creatorCenterRoles}><CreatorPage /></AccessBoundary>} />
         <Route path="/admin" element={<AccessBoundary roles={["admin"]}><AdminPage /></AccessBoundary>} />
         <Route path="*" element={<HomePage />} />

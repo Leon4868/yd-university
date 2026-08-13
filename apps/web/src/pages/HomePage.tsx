@@ -6,11 +6,14 @@ import { CourseCard } from "../components/CourseCard.tsx";
 import { courses } from "../data/courses.ts";
 import { useAuth } from "../auth/AuthContext.tsx";
 import { creatorCenterLabel, roleLabels } from "../auth/permissions.ts";
+import { learnEntrySlug, usePurchasedCourses } from "../web3/usePurchasedCourses.ts";
 
 const courseFilters = ["全部", "Web3 入门", "Solidity", "DeFi", "安全"] as const;
 
 export function HomePage() {
   const auth = useAuth();
+  const purchased = usePurchasedCourses();
+  const learnSlug = learnEntrySlug(purchased);
   const [activeFilter, setActiveFilter] = useState<(typeof courseFilters)[number]>("全部");
   const visibleCourses = courses.filter((course) => {
     if (activeFilter === "全部") return true;
@@ -24,7 +27,9 @@ export function HomePage() {
       : auth.role === "merchant"
         ? { title: "查看商家分账", description: "查看参与分账的课程与当前可提取 YD。", label: `进入${creatorCenterLabel(auth.role)}`, to: "/creator" }
         : auth.role === "student"
-          ? { title: "开始你的学习", description: "完成章节会保存真实进度，达到 100% 后进入证书流程。", label: "进入我的学习", to: "/learn/solidity-from-zero" }
+          ? learnSlug
+            ? { title: "开始你的学习", description: "完成章节会保存真实进度，达到 100% 后进入证书流程。", label: "进入我的学习", to: `/learn/${learnSlug}` }
+            : { title: "先选一门课程", description: "购买课程后才会解锁学习页，完成全部章节即可进入证书流程。", label: "浏览课程市场", to: "/#courses" }
           : { title: "正在确认账号身份", description: "角色读取完成后会展示对应工作台。", label: "查看账号状态", to: "/profile" };
   return (
     <>

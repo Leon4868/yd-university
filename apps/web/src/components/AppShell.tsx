@@ -4,6 +4,7 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext.tsx";
 import { creatorCenterLabel, roleLabels } from "../auth/permissions.ts";
+import { learnEntrySlug, usePurchasedCourses } from "../web3/usePurchasedCourses.ts";
 import { displayYdBalance, useYdBalance } from "../web3/useYdBalance.ts";
 
 function shortenAddress(address: string) {
@@ -13,8 +14,11 @@ function shortenAddress(address: string) {
 export function AppShell({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const ydBalance = useYdBalance();
+  const purchased = usePurchasedCourses();
   const navigate = useNavigate();
   const hasRole = auth.authenticated && auth.role !== null && !auth.profileError;
+  // 管理员不参与学习；其余角色都要先在链上买过课，入口才出现
+  const learnSlug = hasRole && auth.role !== "admin" ? learnEntrySlug(purchased) : null;
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -25,7 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
           <nav className="main-nav" aria-label="主导航">
             <NavLink to="/">课程</NavLink>
-            {hasRole && auth.role !== "admin" && <NavLink to="/learn/solidity-from-zero">我的学习</NavLink>}
+            {learnSlug && <NavLink to={`/learn/${learnSlug}`}>我的学习</NavLink>}
             {hasRole && (auth.role === "student" || auth.role === "teacher" || auth.role === "merchant") && <NavLink to="/creator">{creatorCenterLabel(auth.role)}</NavLink>}
             {hasRole && auth.role === "admin" && <NavLink to="/admin">管理后台</NavLink>}
           </nav>

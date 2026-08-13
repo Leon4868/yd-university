@@ -14,6 +14,14 @@ import { contractAddresses, courseMarketAbi, hasSepoliaContractConfig, SEPOLIA_C
 
 export const TOKEN_DECIMALS = 18;
 
+/** YD 余额不足以支付课程价；调用方据此引导用户去兑换而不是直接报链上错误 */
+export class InsufficientYdError extends Error {
+  constructor(readonly balance: string, readonly required: string) {
+    super(`YD 余额不足：当前 ${balance} YD，需要 ${required} YD`);
+    this.name = "InsufficientYdError";
+  }
+}
+
 export function requireAddress(value: Address | undefined, name: string): Address {
   if (!value) throw new Error(`缺少 ${name} 配置，请检查前端环境变量`);
   return value;
@@ -48,6 +56,8 @@ export interface PurchaseState {
   balance: string;
   allowance: bigint;
   purchased: boolean;
+  /** 链上 YD 余额是否够付课程价，不够就不允许发起授权 */
+  sufficient: boolean;
 }
 
 export async function readYdBalance(provider: EIP1193Provider): Promise<{ account: Address; balance: string }> {
@@ -78,7 +88,35 @@ export async function readPurchaseState(provider: EIP1193Provider, courseId: str
     balance: formatUnits(balance, TOKEN_DECIMALS),
     allowance: allowance >= required ? allowance : 0n,
     purchased,
+    sufficient: balance >= required,
   };
+}
+
+export interface PurchasableCourse {
+  slug: string;
+  chainCourseId: string | null;
+}
+
+/** 逐门读取链上购买状态，只返回已购课程的 slug；未绑定 chainCourseId 的课程无法购买，直接跳过 */
+export async function readPurchasedCourseSlugs(
+  provider: EIP1193Provider,
+  courses: readonly PurchasableCourse[],
+): Promise<string[]> {
+  if (!hasSepoliaContractConfig) throw new Error("Sepolia 合约地址尚未配置");
+  await assertSepolia(provider);
+  const account = await getConnectedAccount(provider);
+  const { publicClient } = clients(provider, account);
+  const market = requireAddress(contractAddresses.courseMarket, "VITE_COURSE_MARKET_ADDRESS");
+  const onChain = courses.flatMap((course) => (
+    course.chainCourseId ? [{ slug: course.slug, chainCourseId: course.chainCourseId }] : []
+  ));
+  const purchased = await Promise.all(onChain.map((course) => publicClient.readContract({
+    address: market,
+    abi: courseMarketAbi,
+    functionName: "hasPurchased",
+    args: [BigInt(course.chainCourseId), account],
+  })));
+  return onChain.filter((_, index) => purchased[index]).map((course) => course.slug);
 }
 
 export async function approveCourse(provider: EIP1193Provider, priceYD: string): Promise<Hash | null> {
@@ -89,6 +127,11 @@ export async function approveCourse(provider: EIP1193Provider, priceYD: string):
   const token = requireAddress(contractAddresses.ydToken, "VITE_YD_TOKEN_ADDRESS");
   const market = requireAddress(contractAddresses.courseMarket, "VITE_COURSE_MARKET_ADDRESS");
   const price = parseUnits(priceYD, TOKEN_DECIMALS);
+  // 按钮禁用只是提示，真正的拦截放在这里：授权前重新读一次余额，避免界面状态过期
+  const balance = await publicClient.readContract({ address: token, abi: ydTokenAbi, functionName: "balanceOf", args: [account] });
+  if (balance < price) {
+    throw new InsufficientYdError(formatUnits(balance, TOKEN_DECIMALS), priceYD);
+  }
   const allowance = await publicClient.readContract({ address: token, abi: ydTokenAbi, functionName: "allowance", args: [account, market] });
   if (allowance >= price) return null;
   const hash = await walletClient.writeContract({

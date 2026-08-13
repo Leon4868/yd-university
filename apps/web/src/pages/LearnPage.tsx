@@ -8,15 +8,23 @@ import { useAuth } from "../auth/AuthContext.tsx";
 import { PanelState } from "../components/PanelState.tsx";
 import { formatDuration } from "../data/courses.ts";
 import { useAsyncData } from "../lib/useAsyncData.ts";
+import { usePurchasedCourses } from "../web3/usePurchasedCourses.ts";
 
 export function LearnPage() {
   const { slug } = useParams();
   const auth = useAuth();
+  const purchased = usePurchasedCourses();
   let body: ReactNode;
   if (!slug) {
     body = <PanelState tone="error" title="课程不存在" description="链接里缺少课程标识，请从课程市场重新进入。" action={<Link className="button secondary small" to="/">返回课程市场</Link>} />;
   } else if (!auth.authenticated || !auth.token) {
     body = <PanelState title="请先登录" description="学习进度记录在账号里，登录后才能标记完成。" action={<button type="button" className="button primary small" onClick={auth.login}>登录</button>} />;
+  } else if (purchased.loading) {
+    body = <PanelState title="正在确认购买状态" description="正在读取当前钱包在 CourseMarket 上的购买记录。" />;
+  } else if (purchased.error) {
+    body = <PanelState tone="error" title="无法确认购买状态" description={purchased.error} action={<Link className="button secondary small" to={`/courses/${slug}`}>返回课程详情</Link>} />;
+  } else if (!purchased.bypassed && !purchased.slugs.includes(slug)) {
+    body = <PanelState tone="error" title="尚未购买该课程" description="学习页仅向已在链上购买该课程的钱包开放，购买后即可记录进度并在完成后铸造证书。" action={<Link className="button primary small" to={`/courses/${slug}`}>前往课程详情购买</Link>} />;
   } else {
     body = <LearnWorkspace slug={slug} token={auth.token} />;
   }

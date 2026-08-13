@@ -67,6 +67,7 @@ export const courses: Course[] = [
   },
   {
     slug: "defi-principles",
+    chainCourseId: "2",
     title: "DeFi 核心原理与协议拆解（Uniswap V2 源码精讲）",
     summary: "以 Uniswap V2 为样本，拆解 AMM 恒定乘积、手续费、LP 份额、闪电兑换与 TWAP 预言机的完整实现。",
     category: "DeFi",
@@ -102,6 +103,7 @@ export const courses: Course[] = [
   },
   {
     slug: "smart-contract-security",
+    chainCourseId: "3",
     title: "智能合约安全：从攻击到防御",
     summary: "Cyfrin Updraft 免费高级安全课，用 6 个真实合约审计实战掌握漏洞挖掘与防御。",
     category: "安全",
