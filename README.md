@@ -250,6 +250,10 @@ flowchart TD
     E2 --> F1
 ```
 
+### 端到端视觉流程图
+
+![YD University 从注册到结业证书的完整业务流程](docs/assets/yd-university-business-flow.png)
+
 ### 阶段详解
 
 <details open>
